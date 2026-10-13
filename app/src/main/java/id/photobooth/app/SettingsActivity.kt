@@ -48,6 +48,7 @@ class SettingsActivity : BaseActivity() {
     private lateinit var swAllFrames: SwitchCompat
     private lateinit var etLabel: EditText
     private lateinit var swTwoStrips: SwitchCompat
+    private lateinit var swAskText: SwitchCompat
     private lateinit var txtFont: TextView
     private lateinit var etTitle: EditText
     private lateinit var etSubtitle: EditText
@@ -131,6 +132,7 @@ class SettingsActivity : BaseActivity() {
         }
         spEvent = spinner("Acara langsung (dipakai jika menu dimatikan)", EventType.values().map { it.label }, p.eventType.ordinal)
         swGuestFrame = switch("Tamu boleh memilih bingkai di layar foto", p.guestChooseFrame)
+        swAskText = switch("Tampilkan formulir isi tulisan (nama, dll) sebelum foto", p.askText)
         swAllFrames = switch("Tampilkan semua bingkai di setiap acara (bukan hanya yang sesuai tema)", p.showAllFrames)
 
         section("Teks Bingkai per Acara")
@@ -234,6 +236,7 @@ class SettingsActivity : BaseActivity() {
         p.enabledEvents = eventSwitches.filterValues { it.isChecked }.keys
         p.setTextFor(textEvent, etLabel.text.toString().trim(), etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
         p.twoStrips = swTwoStrips.isChecked
+        p.askText = swAskText.isChecked
         p.eventDate = etDate.text.toString().trim()
         p.fontSerif = spFont.selectedItemPosition == 0
         p.eventType = EventType.values()[spEvent.selectedItemPosition]

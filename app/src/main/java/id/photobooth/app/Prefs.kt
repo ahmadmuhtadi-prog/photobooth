@@ -56,6 +56,9 @@ class Prefs(ctx: Context) {
     var guestChooseFrame: Boolean get() = bool("guest_frame", true); set(v) = putBool("guest_frame", v)
     var showAllFrames: Boolean get() = bool("all_frames", false); set(v) = putBool("all_frames", v)
 
+    /** Tampilkan formulir isi tulisan (nama, dll) setiap tamu masuk ke layar foto. */
+    var askText: Boolean get() = bool("ask_text", true); set(v) = putBool("ask_text", v)
+
     /** Format strip: foto 2 kali agar 2 strip di lembar cetak berbeda. */
     var twoStrips: Boolean get() = bool("two_strips", true); set(v) = putBool("two_strips", v)
 

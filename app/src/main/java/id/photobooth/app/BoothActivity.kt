@@ -13,6 +13,7 @@ import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -98,7 +99,10 @@ class BoothActivity : BaseActivity() {
 
         buildFilterChips()
         buildFrameChips()
-        infoText.text = "Atur posisi, pilih bingkai & filter, lalu tekan MULAI"
+        updateTextInfo()
+        findViewById<Button>(R.id.btnText).setOnClickListener { showTextForm() }
+        // Formulir tulisan langsung muncul saat tamu masuk (bisa dimatikan operator).
+        if (prefs.askText && savedInstanceState == null) previewView.post { showTextForm() }
         findViewById<Button>(R.id.btnStart).setOnClickListener { startSession() }
         findViewById<Button>(R.id.btnBack).setOnClickListener {
             val first = firstSessionId
@@ -126,6 +130,101 @@ class BoothActivity : BaseActivity() {
         shots.forEach { if (!it.isRecycled) it.recycle() }
         shots.clear()
         super.onDestroy()
+    }
+
+    // ---------- Tulisan pada bingkai ----------
+
+    private class TextField(val label: String, val hint: String, val value: String)
+
+    /** Kolom isian sesuai jenis acara. */
+    private fun fieldsFor(title: String): List<TextField> = when (event) {
+        EventType.PERNIKAHAN -> {
+            val parts = title.split("&").map { it.trim() }
+            listOf(
+                TextField("Nama mempelai wanita", "mis. Nasrina", parts.getOrElse(0) { "" }),
+                TextField("Nama mempelai pria", "mis. Achmad", parts.drop(1).joinToString(" & "))
+            )
+        }
+        EventType.WISUDA -> {
+            val name = title.substringBefore(",").trim()
+            val degree = if (title.contains(",")) title.substringAfter(",").trim() else ""
+            listOf(
+                TextField("Nama wisudawan / wisudawati", "mis. Ahmad Fauzi", name),
+                TextField("Gelar (opsional)", "mis. S.T. / S.Pd. / M.Kom.", degree)
+            )
+        }
+        EventType.CFD -> listOf(TextField("Nama kamu / komunitas", "mis. Komunitas Lari Pagi", title))
+        EventType.ULANG_TAHUN -> listOf(TextField("Nama yang berulang tahun", "mis. Aisyah", title))
+        EventType.KORPORAT -> listOf(TextField("Nama perusahaan / divisi / acara", "mis. PT Maju Jaya", title))
+        EventType.LEBARAN -> listOf(TextField("Nama keluarga / instansi", "mis. Keluarga Besar Pak Hasan", title))
+        EventType.SEKOLAH -> listOf(TextField("Nama sekolah / kelas", "mis. XII IPA 1", title))
+        EventType.PESTA -> listOf(TextField("Nama kamu / geng", "mis. Squad Seru", title))
+        EventType.UMUM -> listOf(TextField("Tulisan utama", "mis. nama acara", title))
+    }
+
+    private fun composeTitle(values: List<String>): String = when (event) {
+        EventType.PERNIKAHAN -> values.filter { it.isNotBlank() }.joinToString(" & ")
+        EventType.WISUDA -> if (values.getOrElse(1) { "" }.isBlank()) values[0] else "${values[0]}, ${values[1]}"
+        else -> values.firstOrNull() ?: ""
+    }
+
+    private fun updateTextInfo() {
+        val t = prefs.titleFor(event)
+        infoText.text = if (t.isBlank()) "Atur posisi, pilih bingkai & filter, lalu tekan MULAI"
+        else "Tulisan: \"$t\" \u2022 pilih bingkai & filter, lalu MULAI"
+    }
+
+    /** Formulir sebelum foto: ubah nama / tulisan yang tercetak di bingkai. */
+    private fun showTextForm() {
+        if (running || isFinishing) return
+        val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt() }
+        val fields = fieldsFor(prefs.titleFor(event))
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), dp(4))
+        }
+        fun addField(label: String, hint: String, value: String): EditText {
+            form.addView(TextView(this).apply {
+                text = label; textSize = 15f
+                setPadding(0, dp(10), 0, 0)
+            })
+            val et = EditText(this).apply {
+                setText(value)
+                this.hint = hint
+                textSize = 20f
+                setSingleLine(true)
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            }
+            form.addView(et)
+            return et
+        }
+        val inputs = fields.map { addField(it.label, it.hint, it.value) }
+        val subInput = addField("Tulisan kecil (sub judul)", event.subtitle, prefs.subtitleFor(event))
+        val scroll = android.widget.ScrollView(this).apply { addView(form) }
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("${event.emoji}  Tulisan pada bingkai \u2014 ${prefs.labelFor(event)}")
+            .setView(scroll)
+            .setPositiveButton("SIMPAN") { _, _ ->
+                val title = composeTitle(inputs.map { it.text.toString().trim() })
+                prefs.setTextFor(event, prefs.labelFor(event), title, subInput.text.toString().trim())
+                updateTextInfo()
+                val keep = selectedFrame
+                buildFrameChips() // perbarui contoh bingkai dengan tulisan baru
+                if (keep in frameOptions) selectFrame(keep)
+            }
+            .setNeutralButton("KOSONGKAN", null)
+            .setNegativeButton("BATAL", null)
+            .create()
+        dialog.setOnShowListener {
+            // "Kosongkan" mengosongkan isian tanpa menutup formulir.
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                inputs.forEach { it.setText("") }
+                inputs.firstOrNull()?.requestFocus()
+            }
+        }
+        dialog.show()
+        resetIdle()
     }
 
     // ---------- Bingkai ----------
