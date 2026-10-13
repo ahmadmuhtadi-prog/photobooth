@@ -63,6 +63,37 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <TextView
+            android:id="@+id/frameLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:text="Pilih bingkai"
+            android:textColor="@color/muted"
+            android:textSize="14sp" />
+
+        <HorizontalScrollView
+            android:id="@+id/frameScroll"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/frameRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:text="Pilih filter"
+            android:textColor="@color/muted"
+            android:textSize="14sp" />
+
         <HorizontalScrollView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
