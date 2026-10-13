@@ -2,6 +2,7 @@ package id.photobooth.app
 
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -37,6 +38,22 @@ enum class FrameStyle(
     RETRO("Retro 70-an", 0xFFF4E3C1.toInt(), 0xFF3D2C29.toInt(), false),
     ISLAMI("Lebaran / Islami", 0xFF0F5132.toInt(), 0xFFF2D27A.toInt(), true, true),
     KORPORAT("Korporat Modern", 0xFFFFFFFF.toInt(), 0xFF1F2A44.toInt(), false),
+    MINIMALIS_HITAM("Minimalis Hitam", 0xFF111111.toInt(), 0xFFFFFFFF.toInt(), false),
+    MINIMALIS_PUTIH("Minimalis Putih", 0xFFFFFFFF.toInt(), 0xFF111111.toInt(), false),
+    LENGKUNG("Lengkung Sage", 0xFFDDE5D6.toInt(), 0xFF3E5641.toInt(), true, true),
+    BULAT("Pastel Bulat", 0xFFEDE7F6.toInt(), 0xFF5E4B8B.toInt(), false),
+    EMAS_HITAM("Mewah Hitam Emas", 0xFF0E0E0E.toInt(), 0xFFD4AF37.toInt(), true),
+    BATIK("Batik Kawung", 0xFFF3E6D0.toInt(), 0xFF5A3A1A.toInt(), true),
+    TROPIS("Tropis", 0xFFFFF8EC.toInt(), 0xFF1B4332.toInt(), false),
+    LANGIT("Langit Berbintang", 0xFF0B1026.toInt(), 0xFFFFFFFF.toInt(), true, true),
+    PELANGI("Pelangi Ceria", 0xFFEAF6FF.toInt(), 0xFF33415C.toInt(), false, true),
+    GINGHAM("Kotak Piknik", 0xFFFFFFFF.toInt(), 0xFFC1121F.toInt(), false),
+    KRAFT("Scrapbook Kraft", 0xFFC9A27A.toInt(), 0xFF3B2A1A.toInt(), true),
+    NEON("Neon Malam", 0xFF0D0221.toInt(), 0xFFFF2E97.toInt(), false),
+    KOMIK("Komik Pop", 0xFFFFD60A.toInt(), 0xFF111111.toInt(), false),
+    MERAH_PUTIH("Merah Putih", 0xFFFFFFFF.toInt(), 0xFFC8102E.toInt(), false),
+    LARI("Lari Pagi", 0xFFE9F5FF.toInt(), 0xFF034078.toInt(), false, true),
+    SAKURA("Sakura", 0xFFFFF5F7.toInt(), 0xFF8C2F39.toInt(), true),
     CUSTOM("Bingkai Saya (PNG)", null, null, null);
 
     /** Tambahan margin kiri-kanan (untuk lubang film). */
@@ -59,35 +76,35 @@ enum class EventType(
 ) {
     PERNIKAHAN(
         "Pernikahan", "\uD83D\uDC8D", 0xFFB8892F.toInt(), "The Wedding of", "Nama & Nama",
-        listOf(FrameStyle.SKETSA, FrameStyle.ELEGAN_EMAS, FrameStyle.BUNGA, FrameStyle.ROMANTIS, FrameStyle.POLAROID, FrameStyle.POLOS)
+        listOf(FrameStyle.SKETSA, FrameStyle.ELEGAN_EMAS, FrameStyle.BUNGA, FrameStyle.ROMANTIS, FrameStyle.LENGKUNG, FrameStyle.EMAS_HITAM, FrameStyle.SAKURA, FrameStyle.BATIK, FrameStyle.MINIMALIS_PUTIH, FrameStyle.POLAROID, FrameStyle.KRAFT, FrameStyle.POLOS)
     ),
     WISUDA(
         "Wisuda", "\uD83C\uDF93", 0xFF2A4A8A.toInt(), "Selamat Wisuda", "Wisuda 2026",
-        listOf(FrameStyle.WISUDA, FrameStyle.WISUDA_MARUN, FrameStyle.ELEGAN_EMAS, FrameStyle.POLAROID, FrameStyle.FILM)
+        listOf(FrameStyle.WISUDA, FrameStyle.WISUDA_MARUN, FrameStyle.EMAS_HITAM, FrameStyle.ELEGAN_EMAS, FrameStyle.LANGIT, FrameStyle.LENGKUNG, FrameStyle.MINIMALIS_HITAM, FrameStyle.MINIMALIS_PUTIH, FrameStyle.BATIK, FrameStyle.POLAROID, FrameStyle.FILM)
     ),
     CFD(
         "Car Free Day", "\uD83D\uDEB4", 0xFF00A6A6.toInt(), "Car Free Day", "CFD Minggu Pagi",
-        listOf(FrameStyle.SPORTY, FrameStyle.ALAM, FrameStyle.RETRO, FrameStyle.POLAROID)
+        listOf(FrameStyle.SPORTY, FrameStyle.ALAM, FrameStyle.LARI, FrameStyle.TROPIS, FrameStyle.PELANGI, FrameStyle.KOMIK, FrameStyle.MERAH_PUTIH, FrameStyle.RETRO, FrameStyle.KRAFT, FrameStyle.POLAROID, FrameStyle.MINIMALIS_PUTIH)
     ),
     ULANG_TAHUN(
         "Ulang Tahun", "\uD83C\uDF82", 0xFFEF476F.toInt(), "Happy Birthday", "Nama",
-        listOf(FrameStyle.BALON, FrameStyle.PESTA, FrameStyle.POLAROID, FrameStyle.RETRO)
+        listOf(FrameStyle.BALON, FrameStyle.PESTA, FrameStyle.PELANGI, FrameStyle.KOMIK, FrameStyle.NEON, FrameStyle.SAKURA, FrameStyle.GINGHAM, FrameStyle.BULAT, FrameStyle.RETRO, FrameStyle.KRAFT, FrameStyle.POLAROID)
     ),
     KORPORAT(
         "Acara Kantor", "\uD83D\uDCBC", 0xFF2563EB.toInt(), "Annual Gathering", "Nama Perusahaan",
-        listOf(FrameStyle.KORPORAT, FrameStyle.FILM, FrameStyle.POLAROID, FrameStyle.POLOS)
+        listOf(FrameStyle.KORPORAT, FrameStyle.MINIMALIS_HITAM, FrameStyle.MINIMALIS_PUTIH, FrameStyle.EMAS_HITAM, FrameStyle.LANGIT, FrameStyle.BATIK, FrameStyle.MERAH_PUTIH, FrameStyle.FILM, FrameStyle.POLAROID, FrameStyle.POLOS)
     ),
     LEBARAN(
         "Halal Bihalal", "\uD83C\uDF19", 0xFF2D8A57.toInt(), "Halal Bihalal", "Keluarga Besar",
-        listOf(FrameStyle.ISLAMI, FrameStyle.ELEGAN_EMAS, FrameStyle.POLAROID, FrameStyle.POLOS)
+        listOf(FrameStyle.ISLAMI, FrameStyle.BATIK, FrameStyle.ELEGAN_EMAS, FrameStyle.EMAS_HITAM, FrameStyle.LANGIT, FrameStyle.LENGKUNG, FrameStyle.ALAM, FrameStyle.MINIMALIS_PUTIH, FrameStyle.POLAROID, FrameStyle.POLOS)
     ),
     SEKOLAH(
         "Perpisahan Sekolah", "\uD83C\uDFEB", 0xFFE76F51.toInt(), "Kenangan Kita", "Nama Sekolah",
-        listOf(FrameStyle.RETRO, FrameStyle.PESTA, FrameStyle.POLAROID, FrameStyle.FILM)
+        listOf(FrameStyle.RETRO, FrameStyle.PESTA, FrameStyle.KOMIK, FrameStyle.PELANGI, FrameStyle.GINGHAM, FrameStyle.KRAFT, FrameStyle.NEON, FrameStyle.MERAH_PUTIH, FrameStyle.FILM, FrameStyle.POLAROID)
     ),
     PESTA(
         "Pesta & Festival", "\uD83C\uDF89", 0xFF7B2CBF.toInt(), "Let's Party", "Nama Acara",
-        listOf(FrameStyle.PESTA, FrameStyle.FILM, FrameStyle.RETRO, FrameStyle.BALON)
+        listOf(FrameStyle.PESTA, FrameStyle.NEON, FrameStyle.FILM, FrameStyle.RETRO, FrameStyle.BALON, FrameStyle.KOMIK, FrameStyle.LANGIT, FrameStyle.EMAS_HITAM, FrameStyle.GINGHAM, FrameStyle.MINIMALIS_HITAM)
     ),
     UMUM(
         "Lainnya", "\u2728", 0xFF6C757D.toInt(), "Photobooth", "Nama Acara",
@@ -131,6 +148,56 @@ object Frames {
                 }
             }
             FrameStyle.ISLAMI -> diamondPattern(c, w, h, k)
+            FrameStyle.BATIK -> kawung(c, w, h, k)
+            FrameStyle.LANGIT -> {
+                val rnd = Random(3)
+                repeat(if (w > 700) 200 else 120) {
+                    c.drawCircle(rnd.nextFloat() * w, rnd.nextFloat() * h, (0.8f + rnd.nextFloat() * 2f) * k, fill(Color.WHITE, 80 + rnd.nextInt(170)))
+                }
+            }
+            FrameStyle.PELANGI -> {
+                val rnd = Random(8)
+                repeat(if (w > 700) 9 else 6) { cloud(c, rnd.nextFloat() * w, rnd.nextFloat() * h, (16f + rnd.nextFloat() * 14f) * k) }
+            }
+            FrameStyle.GINGHAM -> {
+                val band = fill(0xFFC1121F.toInt(), 55)
+                val step = 44f * k
+                var x = 0f
+                while (x < w) { c.drawRect(x, 0f, x + step / 2f, h, band); x += step }
+                var y = 0f
+                while (y < h) { c.drawRect(0f, y, w, y + step / 2f, band); y += step }
+                mats(c, slots, 10f * k, Color.WHITE)
+            }
+            FrameStyle.KRAFT -> {
+                val rnd = Random(4)
+                repeat(if (w > 700) 600 else 350) {
+                    c.drawCircle(rnd.nextFloat() * w, rnd.nextFloat() * h, (0.6f + rnd.nextFloat() * 1.4f) * k, fill(0xFF6B4A2B.toInt(), 50))
+                }
+                mats(c, slots, 10f * k, 0xFFFFFDF7.toInt())
+            }
+            FrameStyle.KOMIK -> {
+                val dot = fill(0xFFF4A100.toInt(), 170)
+                val step = 18f * k
+                var row = 0
+                var y = 0f
+                while (y < h + step) {
+                    var x = if (row % 2 == 0) 0f else step / 2f
+                    while (x < w + step) { c.drawCircle(x, y, 3.6f * k, dot); x += step }
+                    y += step / 2f; row++
+                }
+                mats(c, slots, 7f * k, 0xFF111111.toInt())
+            }
+            FrameStyle.SAKURA -> {
+                val rnd = Random(9)
+                repeat(if (w > 700) 60 else 36) {
+                    val x = rnd.nextFloat() * w
+                    val y = rnd.nextFloat() * h
+                    c.save()
+                    c.rotate(rnd.nextFloat() * 180f, x, y)
+                    c.drawOval(RectF(x - 6f * k, y - 3.5f * k, x + 6f * k, y + 3.5f * k), fill(0xFFF7B6C2.toInt(), 150))
+                    c.restore()
+                }
+            }
             FrameStyle.POLAROID -> {
                 val p = fill(Color.WHITE).apply { setShadowLayer(12f * k, 0f, 4f * k, 0x40000000) }
                 slots.forEach { r -> c.drawRect(r.left - 10f * k, r.top - 10f * k, r.right + 10f * k, r.bottom + 10f * k, p) }
@@ -207,6 +274,107 @@ object Frames {
                 leaf(c, 14f * k, 34f * k, 30f * k, 75f)
                 leaf(c, w - 22f * k, 16f * k, 40f * k, -35f)
                 leaf(c, w - 14f * k, 34f * k, 30f * k, -75f)
+            }
+            FrameStyle.MINIMALIS_HITAM -> c.drawRect(14f * k, 14f * k, w - 14f * k, h - 14f * k, stroke(Color.WHITE, 1.2f * k))
+            FrameStyle.MINIMALIS_PUTIH -> c.drawRect(footer.centerX() - 30f * k, footer.top + 6f * k, footer.centerX() + 30f * k, footer.top + 8f * k, fill(0xFF111111.toInt()))
+            FrameStyle.LENGKUNG -> {
+                val sage = stroke(0xFF6B8F71.toInt(), 2f * k)
+                sketchLeaf(c, footer.left + 14f * k, footer.centerY() + 10f * k, 40f * k, -50f, sage)
+                sketchLeaf(c, footer.left + 20f * k, footer.centerY() - 6f * k, 34f * k, -10f, sage)
+                sketchLeaf(c, footer.right - 14f * k, footer.centerY() + 10f * k, 40f * k, 230f, sage)
+                sketchLeaf(c, footer.right - 20f * k, footer.centerY() - 6f * k, 34f * k, 190f, sage)
+                divider(c, footer, k, 0xFF6B8F71.toInt())
+            }
+            FrameStyle.BULAT -> {
+                val dots = stroke(0xFF9F86C0.toInt(), 3f * k).apply { pathEffect = DashPathEffect(floatArrayOf(0.1f, 12f * k), 0f) }
+                c.drawRoundRect(RectF(14f * k, 14f * k, w - 14f * k, h - 14f * k), 30f * k, 30f * k, dots)
+            }
+            FrameStyle.EMAS_HITAM -> {
+                val gold = 0xFFD4AF37.toInt()
+                doubleBorder(c, w, h, k, gold)
+                decoCorners(c, w, h, k, gold)
+                divider(c, footer, k, gold)
+            }
+            FrameStyle.BATIK -> {
+                val brown = 0xFF7B4B22.toInt()
+                c.drawRect(9f * k, 9f * k, w - 9f * k, h - 9f * k, stroke(brown, 5f * k))
+                c.drawRect(17f * k, 17f * k, w - 17f * k, h - 17f * k, stroke(brown, 1.2f * k))
+                divider(c, footer, k, brown)
+            }
+            FrameStyle.TROPIS -> {
+                val dark = 0xFF2D6A4F.toInt()
+                val light = 0xFF52B788.toInt()
+                bigLeaf(c, 0f, 0f, 80f * k, 40f, dark)
+                bigLeaf(c, 10f * k, 30f * k, 60f * k, 75f, light)
+                bigLeaf(c, w, 0f, 80f * k, 140f, light)
+                bigLeaf(c, w - 10f * k, 34f * k, 60f * k, 105f, dark)
+                bigLeaf(c, w, h, 90f * k, 225f, dark)
+                bigLeaf(c, w - 20f * k, h - 6f * k, 70f * k, 190f, light)
+                bigLeaf(c, 0f, h, 80f * k, 315f, light)
+            }
+            FrameStyle.LANGIT -> {
+                crescent(c, footer.left + 34f * k, footer.centerY(), 22f * k, 0xFFFFE8A3.toInt(), 0xFF0B1026.toInt())
+                star4(c, footer.right - 34f * k, footer.centerY() - 8f * k, 16f * k, fill(0xFFFFE8A3.toInt()))
+                star4(c, footer.right - 54f * k, footer.centerY() + 16f * k, 8f * k, fill(Color.WHITE))
+                star4(c, footer.right - 18f * k, footer.centerY() + 22f * k, 6f * k, fill(Color.WHITE))
+            }
+            FrameStyle.PELANGI -> {
+                rainbow(c, footer.left + 36f * k, footer.centerY() + 18f * k, 30f * k)
+                rainbow(c, footer.right - 36f * k, footer.centerY() + 18f * k, 30f * k)
+            }
+            FrameStyle.KRAFT -> {
+                val tape = fill(0xFFF1E3B5.toInt(), 210)
+                slots.forEach { r ->
+                    tapeStrip(c, r.left + 14f * k, r.top + 4f * k, 70f * k, 22f * k, -35f, tape)
+                    tapeStrip(c, r.right - 14f * k, r.top + 4f * k, 70f * k, 22f * k, 35f, tape)
+                }
+            }
+            FrameStyle.NEON -> {
+                val pink = 0xFFFF2E97.toInt()
+                val cyan = 0xFF00F5FF.toInt()
+                val glowPink = stroke(pink, 4f * k).apply { setShadowLayer(14f * k, 0f, 0f, pink) }
+                slots.forEach { r -> c.drawRect(r, glowPink) }
+                c.drawRect(12f * k, 12f * k, w - 12f * k, h - 12f * k, stroke(cyan, 3f * k).apply { setShadowLayer(12f * k, 0f, 0f, cyan) })
+            }
+            FrameStyle.KOMIK -> {
+                val burst = Path()
+                val cx = footer.right - 30f * k
+                val cy = footer.top + 26f * k
+                for (i in 0 until 24) {
+                    val a = Math.toRadians(i * 15.0)
+                    val r = if (i % 2 == 0) 26f * k else 14f * k
+                    val x = cx + (cos(a) * r).toFloat()
+                    val y = cy + (sin(a) * r).toFloat()
+                    if (i == 0) burst.moveTo(x, y) else burst.lineTo(x, y)
+                }
+                burst.close()
+                c.drawPath(burst, fill(0xFFE63946.toInt()))
+                c.drawPath(burst, stroke(0xFF111111.toInt(), 2.5f * k))
+            }
+            FrameStyle.MERAH_PUTIH -> {
+                val red = 0xFFC8102E.toInt()
+                c.drawRect(0f, 0f, w, 16f * k, fill(red))
+                c.drawRect(0f, h - 20f * k, w, h, fill(red))
+                c.drawRect(footer.centerX() - 40f * k, footer.top + 6f * k, footer.centerX(), footer.top + 12f * k, fill(red))
+                c.drawRect(footer.centerX(), footer.top + 6f * k, footer.centerX() + 40f * k, footer.top + 12f * k, stroke(red, 1.2f * k))
+            }
+            FrameStyle.LARI -> {
+                val lane = stroke(0xFF034078.toInt(), 2f * k, 120).apply { pathEffect = DashPathEffect(floatArrayOf(16f * k, 10f * k), 0f) }
+                for (i in 0 until 3) {
+                    val y = footer.bottom - (8f + i * 12f) * k
+                    c.drawLine(footer.left, y, footer.right, y, lane)
+                }
+                sun(c, footer.right - 32f * k, footer.centerY() - 14f * k, 14f * k)
+                c.drawText("\u2192", footer.left + 30f * k, footer.centerY(), Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = 0xFFFF6B35.toInt(); textSize = 46f * k; textAlign = Paint.Align.CENTER; typeface = android.graphics.Typeface.DEFAULT_BOLD
+                })
+            }
+            FrameStyle.SAKURA -> {
+                val branch = stroke(0xFF6D4C41.toInt(), 3f * k)
+                c.drawPath(Path().apply { moveTo(0f, 70f * k); quadTo(60f * k, 40f * k, 110f * k, 6f * k) }, branch)
+                c.drawPath(Path().apply { moveTo(w, h - 60f * k); quadTo(w - 70f * k, h - 40f * k, w - 120f * k, h - 6f * k) }, branch)
+                listOf(30f to 52f, 70f to 30f, 104f to 12f).forEach { (x, y) -> flower(c, x * k, y * k, 14f * k, 0xFFF7B6C2.toInt()) }
+                listOf(w / k - 30f to h / k - 44f, w / k - 76f to h / k - 28f, w / k - 112f to h / k - 12f).forEach { (x, y) -> flower(c, x * k, y * k, 14f * k, 0xFFF7B6C2.toInt()) }
             }
             FrameStyle.PESTA -> {
                 val panel = RectF(footer.left + 6f * k, footer.top + 6f * k, footer.right - 6f * k, footer.bottom - 6f * k)
@@ -408,6 +576,88 @@ object Frames {
         sketchLeaf(c, x + dir * 20f * k, y - 66f * k, 26f * k, if (dir > 0) 200f else -20f, p)
         c.drawCircle(x + dir * 52f * k, y - 52f * k, 7f * k, p)
         c.drawLine(x + dir * 24f * k, y - 46f * k, x + dir * 47f * k, y - 50f * k, p)
+    }
+
+    private fun mats(c: Canvas, slots: List<RectF>, pad: Float, color: Int) {
+        val p = fill(color)
+        slots.forEach { r -> c.drawRect(r.left - pad, r.top - pad, r.right + pad, r.bottom + pad, p) }
+    }
+
+    private fun kawung(c: Canvas, w: Float, h: Float, k: Float) {
+        val petal = fill(0xFFD9B98C.toInt(), 120)
+        val line = stroke(0xFFB08A5A.toInt(), 1.2f * k, 120)
+        val step = 64f * k
+        var y = 0f
+        while (y < h + step) {
+            var x = 0f
+            while (x < w + step) {
+                for (i in 0 until 4) {
+                    c.save()
+                    c.rotate(45f + i * 90f, x, y)
+                    val o = RectF(x - 9f * k, y - 30f * k, x + 9f * k, y - 4f * k)
+                    c.drawOval(o, petal)
+                    c.drawOval(o, line)
+                    c.restore()
+                }
+                c.drawCircle(x, y, 2.5f * k, fill(0xFF7B4B22.toInt(), 140))
+                x += step
+            }
+            y += step
+        }
+    }
+
+    private fun cloud(c: Canvas, x: Float, y: Float, r: Float) {
+        val p = fill(Color.WHITE, 230)
+        c.drawCircle(x, y, r, p)
+        c.drawCircle(x + r * 0.9f, y + r * 0.2f, r * 0.8f, p)
+        c.drawCircle(x - r * 0.9f, y + r * 0.25f, r * 0.7f, p)
+        c.drawRoundRect(RectF(x - r * 1.5f, y, x + r * 1.6f, y + r * 0.9f), r * 0.45f, r * 0.45f, p)
+    }
+
+    private fun rainbow(c: Canvas, cx: Float, cy: Float, r: Float) {
+        val colors = intArrayOf(0xFFFF6B6B.toInt(), 0xFFFFB347.toInt(), 0xFFFFE066.toInt(), 0xFF7BD389.toInt(), 0xFF5DA9E9.toInt(), 0xFFB388EB.toInt())
+        val band = r / 9f
+        colors.forEachIndexed { i, col ->
+            val rr = r - i * band
+            c.drawArc(RectF(cx - rr, cy - rr, cx + rr, cy + rr), 180f, 180f, false, stroke(col, band))
+        }
+        cloud(c, cx - r * 0.8f, cy, r * 0.28f)
+        cloud(c, cx + r * 0.8f, cy, r * 0.28f)
+    }
+
+    private fun bigLeaf(c: Canvas, x: Float, y: Float, len: Float, angle: Float, color: Int) {
+        c.save()
+        c.rotate(angle, x, y)
+        val path = Path().apply {
+            moveTo(x, y)
+            quadTo(x + len * 0.5f, y - len * 0.45f, x + len, y)
+            quadTo(x + len * 0.5f, y + len * 0.45f, x, y)
+        }
+        c.drawPath(path, fill(color))
+        c.drawLine(x, y, x + len * 0.85f, y, stroke(Color.WHITE, len * 0.03f, 140))
+        c.restore()
+    }
+
+    private fun tapeStrip(c: Canvas, cx: Float, cy: Float, tw: Float, th: Float, angle: Float, p: Paint) {
+        c.save()
+        c.rotate(angle, cx, cy)
+        c.drawRect(cx - tw / 2f, cy - th / 2f, cx + tw / 2f, cy + th / 2f, p)
+        c.restore()
+    }
+
+    /** Ornamen art-deco: kipas garis di keempat sudut. */
+    private fun decoCorners(c: Canvas, w: Float, h: Float, k: Float, color: Int) {
+        val p = stroke(color, 1.5f * k)
+        val corners = listOf(
+            Triple(26f * k, 26f * k, 0f), Triple(w - 26f * k, 26f * k, 90f),
+            Triple(w - 26f * k, h - 26f * k, 180f), Triple(26f * k, h - 26f * k, 270f)
+        )
+        corners.forEach { (x, y, start) ->
+            for (i in 1..3) {
+                val r = i * 12f * k
+                c.drawArc(RectF(x - r, y - r, x + r, y + r), start, 90f, false, p)
+            }
+        }
     }
 
     private fun heart(c: Canvas, cx: Float, cy: Float, s: Float, p: Paint) {

@@ -121,12 +121,16 @@ object Collage {
         val geo = geometry(L, photos.size.coerceIn(1, 4), st.extraSide(L), headerH)
         Frames.background(st, c, w, h, geo.slots, k)
         val radius = when (st) {
-            FrameStyle.POLAROID, FrameStyle.FILM, FrameStyle.KORPORAT, FrameStyle.SKETSA -> 0f
+            FrameStyle.POLAROID, FrameStyle.FILM, FrameStyle.KORPORAT, FrameStyle.SKETSA,
+            FrameStyle.MINIMALIS_HITAM, FrameStyle.MINIMALIS_PUTIH, FrameStyle.GINGHAM,
+            FrameStyle.KRAFT, FrameStyle.KOMIK, FrameStyle.MERAH_PUTIH, FrameStyle.NEON -> 0f
+            FrameStyle.BULAT -> 34f * k
             else -> if (L == LayoutType.STRIP_2X6) 10f else 16f
         }
+        val arch = st == FrameStyle.LENGKUNG
         geo.slots.forEachIndexed { i, r ->
             val photo = photos.getOrNull(i) ?: return@forEachIndexed
-            drawCropped(c, photo, r, radius)
+            drawCropped(c, photo, r, radius, arch)
         }
         Frames.foreground(st, c, w, h, geo.slots, geo.footer, k)
 
@@ -140,7 +144,7 @@ object Collage {
     }
 
     /** Pemotongan otomatis: crop tengah agar rasio pas dengan slot (tidak gepeng). */
-    fun drawCropped(c: Canvas, src: Bitmap, dst: RectF, radius: Float) {
+    fun drawCropped(c: Canvas, src: Bitmap, dst: RectF, radius: Float, arch: Boolean = false) {
         val dstRatio = dst.width() / dst.height()
         val srcRatio = src.width.toFloat() / src.height
         val crop = if (srcRatio > dstRatio) {
@@ -153,7 +157,15 @@ object Collage {
             Rect(0, y, src.width, y + chh)
         }
         c.save()
-        val path = Path().apply { addRoundRect(dst, radius, radius, Path.Direction.CW) }
+        val path = Path().apply {
+            if (arch) {
+                // Bentuk lengkung (seperti jendela/gapura) di bagian atas foto.
+                val r = min(dst.width(), dst.height()) * 0.5f
+                addRoundRect(dst, floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f), Path.Direction.CW)
+            } else {
+                addRoundRect(dst, radius, radius, Path.Direction.CW)
+            }
+        }
         c.clipPath(path)
         c.drawBitmap(src, crop, dst, Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG))
         c.restore()
