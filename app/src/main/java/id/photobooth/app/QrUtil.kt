@@ -21,7 +21,14 @@ object QrUtil {
 
     /** Format standar QR untuk bergabung ke Wi-Fi. */
     fun wifiPayload(ssid: String, pass: String): String {
-        fun esc(s: String) = s.replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,").replace(":", "\\:").replace("\"", "\\\"")
+        fun esc(s: String): String {
+            val sb = StringBuilder()
+            for (ch in s) {
+                if (ch == '\\' || ch == ';' || ch == ',' || ch == ':' || ch == '"') sb.append('\\')
+                sb.append(ch)
+            }
+            return sb.toString()
+        }
         return if (pass.isBlank()) "WIFI:T:nopass;S:${esc(ssid)};;"
         else "WIFI:T:WPA;S:${esc(ssid)};P:${esc(pass)};;"
     }
