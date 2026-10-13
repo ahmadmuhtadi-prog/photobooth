@@ -33,14 +33,15 @@ class CollageSpec(
     val date: String,
     val serif: Boolean,
     val logo: Bitmap?,
-    val overlay: Bitmap?
+    val overlay: Bitmap?,
+    val frame: FrameStyle = FrameStyle.POLOS
 ) {
     fun recycle() {
         logo?.recycle(); overlay?.recycle()
     }
 
     companion object {
-        fun fromPrefs(ctx: Context, p: Prefs) = CollageSpec(
+        fun fromPrefs(ctx: Context, p: Prefs, frame: FrameStyle = p.frameStyle) = CollageSpec(
             layout = p.layout,
             frameColor = Palette.frame(p.frameColorIndex),
             textColor = Palette.text(p.textColorIndex),
@@ -49,7 +50,8 @@ class CollageSpec(
             date = p.eventDate,
             serif = p.fontSerif,
             logo = Storage.loadUriBitmap(ctx, p.logoUri, 900),
-            overlay = Storage.loadUriBitmap(ctx, p.overlayUri, 1800)
+            overlay = if (frame == FrameStyle.CUSTOM) Storage.loadUriBitmap(ctx, p.overlayUri, 1800) else null,
+            frame = frame
         )
     }
 }
@@ -58,7 +60,7 @@ object Collage {
 
     private class Geometry(val slots: List<RectF>, val footer: RectF)
 
-    private fun geometry(layout: LayoutType, n: Int): Geometry {
+    private fun geometry(layout: LayoutType, n: Int, extra: Float): Geometry {
         val w = layout.width.toFloat()
         val h = layout.height.toFloat()
         return when (layout) {
@@ -68,13 +70,13 @@ object Collage {
                 val slotH = (bottom - top - gap * (n - 1)) / n
                 val slots = (0 until n).map { i ->
                     val y = top + i * (slotH + gap)
-                    RectF(m, y, w - m, y + slotH)
+                    RectF(m + extra, y, w - m - extra, y + slotH)
                 }
                 Geometry(slots, RectF(m, bottom + 10f, w - m, h - m / 2))
             }
             LayoutType.GRID_4X6 -> {
                 val m = 50f; val gap = 30f; val footerH = 360f
-                val area = RectF(m, m, w - m, h - footerH)
+                val area = RectF(m + extra, m, w - m - extra, h - footerH)
                 val cw = (area.width() - gap) / 2f
                 val ch = (area.height() - gap) / 2f
                 val slots = when (n) {
@@ -105,18 +107,27 @@ object Collage {
         val L = spec.layout
         val out = Bitmap.createBitmap(L.width, L.height, Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
-        c.drawColor(spec.frameColor)
+        val st = spec.frame
+        c.drawColor(st.bg ?: spec.frameColor)
 
-        val geo = geometry(L, photos.size.coerceIn(1, 4))
-        val radius = if (L == LayoutType.STRIP_2X6) 10f else 16f
+        val w = L.width.toFloat()
+        val h = L.height.toFloat()
+        val k = w / 600f
+        val geo = geometry(L, photos.size.coerceIn(1, 4), st.extraSide(L))
+        Frames.background(st, c, w, h, geo.slots, k)
+        val radius = when (st) {
+            FrameStyle.POLAROID, FrameStyle.FILM, FrameStyle.KORPORAT -> 2f
+            else -> if (L == LayoutType.STRIP_2X6) 10f else 16f
+        }
         geo.slots.forEachIndexed { i, r ->
             val photo = photos.getOrNull(i) ?: return@forEachIndexed
             drawCropped(c, photo, r, radius)
         }
+        Frames.foreground(st, c, w, h, geo.slots, geo.footer, k)
 
         drawFooter(c, spec, geo.footer)
 
-        spec.overlay?.let { ov ->
+        if (st == FrameStyle.CUSTOM) spec.overlay?.let { ov ->
             c.drawBitmap(ov, null, Rect(0, 0, L.width, L.height), Paint(Paint.FILTER_BITMAP_FLAG))
         }
         return out
@@ -144,11 +155,13 @@ object Collage {
 
     private fun drawFooter(c: Canvas, spec: CollageSpec, area: RectF) {
         val scale = if (spec.layout == LayoutType.STRIP_2X6) 1f else 1.45f
-        val family = if (spec.serif) Typeface.SERIF else Typeface.SANS_SERIF
+        val st = spec.frame
+        val family = if (st.serif ?: spec.serif) Typeface.SERIF else Typeface.SANS_SERIF
+        val textColor = st.text ?: spec.textColor
 
         val lines = mutableListOf<Pair<String, Paint>>()
         fun paint(size: Float, style: Int, alpha: Int = 255) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = spec.textColor
+            color = textColor
             this.alpha = alpha
             textSize = size * scale
             typeface = Typeface.create(family, style)
@@ -158,7 +171,7 @@ object Collage {
         if (spec.title.isNotBlank()) lines += spec.title to paint(54f, Typeface.BOLD)
         if (spec.date.isNotBlank()) lines += spec.date to paint(26f, Typeface.NORMAL, 210).apply { letterSpacing = 0.12f }
 
-        val maxW = area.width() * 0.94f
+        val maxW = area.width() * if (st.sideIcons) 0.64f else 0.94f
         lines.forEach { (text, p) ->
             while (p.measureText(text) > maxW && p.textSize > 12f) p.textSize *= 0.93f
         }
@@ -175,7 +188,7 @@ object Collage {
         var y = area.top + (area.height() - total) / 2f
 
         if (logo != null && logoH > 0f) {
-            val lw = min(area.width() * 0.8f, logoH * logo.width / logo.height)
+            val lw = min(maxW, logoH * logo.width / logo.height)
             val lh = lw * logo.height / logo.width
             val left = area.centerX() - lw / 2f
             c.drawBitmap(logo, null, RectF(left, y + (logoH - lh) / 2f, left + lw, y + (logoH + lh) / 2f), Paint(Paint.FILTER_BITMAP_FLAG))

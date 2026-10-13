@@ -29,6 +29,16 @@ class Prefs(ctx: Context) {
     var frameColorIndex: Int get() = int("frame_color", 0); set(v) = putInt("frame_color", v)
     var textColorIndex: Int get() = int("text_color", 0); set(v) = putInt("text_color", v)
 
+    // --- Jenis acara & bingkai ---
+    var eventType: EventType
+        get() = runCatching { EventType.valueOf(str("event_type", EventType.PERNIKAHAN.name)) }.getOrDefault(EventType.PERNIKAHAN)
+        set(v) = putStr("event_type", v.name)
+    var frameStyle: FrameStyle
+        get() = runCatching { FrameStyle.valueOf(str("frame_style", FrameStyle.ELEGAN_EMAS.name)) }.getOrDefault(FrameStyle.ELEGAN_EMAS)
+        set(v) = putStr("frame_style", v.name)
+    var guestChooseFrame: Boolean get() = bool("guest_frame", true); set(v) = putBool("guest_frame", v)
+    var showAllFrames: Boolean get() = bool("all_frames", false); set(v) = putBool("all_frames", v)
+
     // --- Tata letak ---
     var layout: LayoutType
         get() = runCatching { LayoutType.valueOf(str("layout", LayoutType.STRIP_2X6.name)) }.getOrDefault(LayoutType.STRIP_2X6)

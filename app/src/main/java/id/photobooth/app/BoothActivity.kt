@@ -51,6 +51,9 @@ class BoothActivity : BaseActivity() {
     private lateinit var thumbView: ImageView
     private lateinit var controls: View
     private lateinit var filterRow: LinearLayout
+    private lateinit var frameRow: LinearLayout
+    private var selectedFrame = FrameStyle.POLOS
+    private var frameOptions: List<FrameStyle> = emptyList()
 
     private var imageCapture: ImageCapture? = null
     private var usingFront = true
@@ -74,11 +77,14 @@ class BoothActivity : BaseActivity() {
         thumbView = findViewById(R.id.thumbView)
         controls = findViewById(R.id.controls)
         filterRow = findViewById(R.id.filterRow)
+        frameRow = findViewById(R.id.frameRow)
 
         previewView.implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         previewView.scaleType = PreviewView.ScaleType.FILL_CENTER
 
         buildFilterChips()
+        buildFrameChips()
+        infoText.text = "Atur posisi, pilih bingkai & filter, lalu tekan MULAI"
         findViewById<Button>(R.id.btnStart).setOnClickListener { startSession() }
         findViewById<Button>(R.id.btnBack).setOnClickListener { finish() }
 
@@ -103,6 +109,77 @@ class BoothActivity : BaseActivity() {
         shots.forEach { if (!it.isRecycled) it.recycle() }
         shots.clear()
         super.onDestroy()
+    }
+
+    // ---------- Bingkai ----------
+
+    private fun buildFrameChips() {
+        frameOptions = Frames.available(prefs)
+        selectedFrame = frameOptions.first()
+        val show = prefs.guestChooseFrame && frameOptions.size > 1
+        findViewById<View>(R.id.frameLabel).visibility = if (show) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.frameScroll).visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+
+        val dp = { v: Int -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt() }
+        val layout = prefs.layout
+        val thumbH = dp(118)
+        val thumbW = thumbH * layout.width / layout.height
+        frameRow.removeAllViews()
+        val images = mutableListOf<ImageView>()
+        frameOptions.forEach { f ->
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                setBackgroundResource(R.drawable.frame_chip)
+                setPadding(dp(8), dp(8), dp(8), dp(6))
+                tag = f
+                setOnClickListener { selectFrame(f) }
+            }
+            val iv = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
+            box.addView(iv, LinearLayout.LayoutParams(thumbW, thumbH))
+            box.addView(TextView(this).apply {
+                text = f.label
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(context, R.color.text))
+                gravity = android.view.Gravity.CENTER
+                maxWidth = maxOf(thumbW, dp(96))
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.marginEnd = dp(10)
+            frameRow.addView(box, lp)
+            images += iv
+        }
+        selectFrame(selectedFrame)
+
+        // Gambar pratinjau setiap bingkai di latar belakang.
+        val tw = 120 * layout.width / layout.height * 3
+        val th = 360
+        lifecycleScope.launch {
+            val samples = withContext(Dispatchers.Default) { Collage.samplePhotos(prefs.shotCount) }
+            frameOptions.forEachIndexed { i, f ->
+                val thumb = withContext(Dispatchers.Default) {
+                    runCatching {
+                        val spec = CollageSpec.fromPrefs(this@BoothActivity, prefs, f)
+                        val full = Collage.render(spec, samples)
+                        spec.recycle()
+                        val t = Bitmap.createScaledBitmap(full, tw, th, true)
+                        if (t !== full) full.recycle()
+                        t
+                    }.getOrNull()
+                }
+                if (thumb != null) images[i].setImageBitmap(thumb)
+            }
+            samples.forEach { it.recycle() }
+        }
+    }
+
+    private fun selectFrame(f: FrameStyle) {
+        selectedFrame = f
+        for (i in 0 until frameRow.childCount) {
+            val v = frameRow.getChildAt(i)
+            v.isSelected = v.tag == f
+        }
     }
 
     // ---------- Filter ----------
@@ -254,7 +331,7 @@ class BoothActivity : BaseActivity() {
                 shots.clear()
                 thumbView.visibility = View.GONE
                 countdownText.text = ""
-                infoText.text = "Atur posisi, pilih filter, lalu tekan MULAI"
+                infoText.text = "Atur posisi, pilih bingkai & filter, lalu tekan MULAI"
                 controls.visibility = View.VISIBLE
                 running = false
                 resetIdle()
@@ -294,7 +371,7 @@ class BoothActivity : BaseActivity() {
             Storage.saveJpeg(f, File(dir, "foto_${i + 1}.jpg"), 90)
             filtered += f
         }
-        val spec = CollageSpec.fromPrefs(this, prefs)
+        val spec = CollageSpec.fromPrefs(this, prefs, selectedFrame)
         val collage = Collage.render(spec, filtered)
         val collageFile = File(dir, Storage.COLLAGE)
         Storage.saveJpeg(collage, collageFile, 95)

@@ -38,6 +38,10 @@ class SettingsActivity : BaseActivity() {
     private val muted = 0xFFB3AAB8.toInt()
 
     // Kontrol
+    private lateinit var spEvent: Spinner
+    private lateinit var spFrameStyle: Spinner
+    private lateinit var swGuestFrame: SwitchCompat
+    private lateinit var swAllFrames: SwitchCompat
     private lateinit var etTitle: EditText
     private lateinit var etSubtitle: EditText
     private lateinit var etDate: EditText
@@ -103,11 +107,19 @@ class SettingsActivity : BaseActivity() {
         heading("Pengaturan Photobooth")
         note("Tekan SIMPAN di bawah setelah mengubah pengaturan.")
 
-        section("Acara & Watermark")
+        section("Jenis Acara & Bingkai")
+        spEvent = spinner("Jenis acara", EventType.values().map { it.label }, p.eventType.ordinal)
+        note("Mengganti jenis acara otomatis menyesuaikan sub judul dan bingkai rekomendasi.")
+        spFrameStyle = spinner("Bingkai utama", FrameStyle.values().map { it.label }, p.frameStyle.ordinal)
+        swGuestFrame = switch("Tamu boleh memilih bingkai sendiri di layar foto", p.guestChooseFrame)
+        swAllFrames = switch("Tampilkan semua bingkai (bukan hanya rekomendasi acara)", p.showAllFrames)
+        button("Pratinjau Semua Bingkai") { save(false); previewAll() }
+
+        section("Teks & Watermark")
         etTitle = edit("Judul utama (mis. nama pengantin / perusahaan)", p.eventTitle)
         etSubtitle = edit("Sub judul (mis. The Wedding of / Gathering 2026)", p.eventSubtitle)
         etDate = edit("Tanggal acara", p.eventDate)
-        spFont = spinner("Gaya huruf", listOf("Elegan (Serif)", "Modern (Sans)"), if (p.fontSerif) 0 else 1)
+        spFont = spinner("Gaya huruf (untuk bingkai Polos & Bingkai Saya)", listOf("Elegan (Serif)", "Modern (Sans)"), if (p.fontSerif) 0 else 1)
         row(
             button("Pilih Logo") { pickLogo.launch(arrayOf("image/*")) },
             button("Hapus Logo") { logoUri = ""; refreshFileLabels() }
@@ -117,15 +129,15 @@ class SettingsActivity : BaseActivity() {
         section("Template & Tata Letak")
         spLayout = spinner("Format kolase", LayoutType.values().map { it.label }, p.layout.ordinal)
         spShots = spinner("Jumlah jepretan per sesi", shotOpts.map { "$it foto" }, shotOpts.indexOf(p.shotCount).coerceAtLeast(0))
-        spFrame = spinner("Warna bingkai", Palette.frameColors.map { it.first }, p.frameColorIndex)
-        spText = spinner("Warna teks", Palette.textColors.map { it.first }, p.textColorIndex)
+        spFrame = spinner("Warna latar (untuk bingkai Polos & Bingkai Saya)", Palette.frameColors.map { it.first }, p.frameColorIndex)
+        spText = spinner("Warna teks (untuk bingkai Polos & Bingkai Saya)", Palette.textColors.map { it.first }, p.textColorIndex)
         row(
             button("Pilih Bingkai PNG") { pickOverlay.launch(arrayOf("image/png", "image/*")) },
             button("Hapus Bingkai") { overlayUri = ""; refreshFileLabels() }
         )
         txtOverlay = note("")
-        note("Bingkai PNG transparan ditumpuk di atas kolase. Ukuran ideal: 600x1800 px (strip) atau 1200x1800 px (4x6).")
-        button("Pratinjau Template") { save(false); preview() }
+        note("Bingkai PNG muncul sebagai pilihan \"Bingkai Saya (PNG)\". Bagian foto harus transparan. Ukuran ideal: 600x1800 px (strip) atau 1200x1800 px (4x6).")
+        button("Pratinjau Bingkai Utama") { save(false); preview() }
 
         section("Kamera & Alur Foto")
         swFront = switch("Gunakan kamera depan", p.useFrontCamera)
@@ -165,6 +177,20 @@ class SettingsActivity : BaseActivity() {
 
         refreshFileLabels()
         refreshStatus()
+
+        var lastEvent = p.eventType.ordinal
+        spEvent.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position == lastEvent) return
+                lastEvent = position
+                val ev = EventType.values()[position]
+                if (EventType.isDefaultSubtitle(etSubtitle.text.toString().trim())) etSubtitle.setText(ev.subtitle)
+                etTitle.hint = ev.titleHint
+                spFrameStyle.setSelection(ev.frames.first().ordinal)
+                toast("Bingkai rekomendasi: " + ev.frames.joinToString { it.label })
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
     }
 
     // ---------- Simpan ----------
@@ -175,6 +201,10 @@ class SettingsActivity : BaseActivity() {
         p.eventSubtitle = etSubtitle.text.toString().trim()
         p.eventDate = etDate.text.toString().trim()
         p.fontSerif = spFont.selectedItemPosition == 0
+        p.eventType = EventType.values()[spEvent.selectedItemPosition]
+        p.frameStyle = FrameStyle.values()[spFrameStyle.selectedItemPosition]
+        p.guestChooseFrame = swGuestFrame.isChecked
+        p.showAllFrames = swAllFrames.isChecked
         p.logoUri = logoUri
         p.overlayUri = overlayUri
         p.layout = LayoutType.values()[spLayout.selectedItemPosition]
@@ -240,6 +270,51 @@ class SettingsActivity : BaseActivity() {
             AlertDialog.Builder(this@SettingsActivity)
                 .setTitle("Pratinjau Template")
                 .setView(iv)
+                .setPositiveButton("Tutup", null)
+                .show()
+        }
+    }
+
+    /** Pratinjau semua bingkai yang akan ditawarkan ke tamu, berjajar ke samping. */
+    private fun previewAll() {
+        toast("Menyiapkan pratinjau...")
+        lifecycleScope.launch {
+            val strip = withContext(Dispatchers.Default) {
+                val frames = Frames.available(prefs)
+                val photos = Collage.samplePhotos(prefs.shotCount)
+                val L = prefs.layout
+                val th = 600
+                val tw = th * L.width / L.height
+                val gap = 24
+                val labelH = 56
+                val out = android.graphics.Bitmap.createBitmap(frames.size * (tw + gap) + gap, th + labelH + gap * 2, android.graphics.Bitmap.Config.ARGB_8888)
+                val c = android.graphics.Canvas(out)
+                c.drawColor(0xFF221D2B.toInt())
+                val tp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = 0xFFF7F2EA.toInt(); textSize = 22f; textAlign = android.graphics.Paint.Align.CENTER
+                }
+                frames.forEachIndexed { i, f ->
+                    val spec = CollageSpec.fromPrefs(this@SettingsActivity, prefs, f)
+                    val full = Collage.render(spec, photos)
+                    spec.recycle()
+                    val x = gap + i * (tw + gap)
+                    c.drawBitmap(full, null, android.graphics.Rect(x, gap, x + tw, gap + th), android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG))
+                    full.recycle()
+                    c.drawText(f.label, x + tw / 2f, gap + th + 38f, tp)
+                }
+                photos.forEach { it.recycle() }
+                out
+            }
+            val iv = ImageView(this@SettingsActivity).apply {
+                setImageBitmap(strip)
+                adjustViewBounds = true
+            }
+            val hs = android.widget.HorizontalScrollView(this@SettingsActivity).apply {
+                addView(iv, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(420)))
+            }
+            AlertDialog.Builder(this@SettingsActivity)
+                .setTitle("Bingkai yang ditawarkan ke tamu")
+                .setView(hs)
                 .setPositiveButton("Tutup", null)
                 .show()
         }
