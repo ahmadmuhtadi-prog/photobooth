@@ -22,6 +22,7 @@ enum class FrameStyle(
     val sideIcons: Boolean = false
 ) {
     POLOS("Polos", null, null, null),
+    SKETSA("Sketsa Bunga", 0xFFF8F2E8.toInt(), 0xFF4F6B3A.toInt(), true),
     ELEGAN_EMAS("Elegan Emas", 0xFFFBF6EC.toInt(), 0xFF8A6A2F.toInt(), true),
     BUNGA("Bunga", 0xFFF8E8EA.toInt(), 0xFF7A3B4A.toInt(), true, true),
     ROMANTIS("Romantis Hati", 0xFFFFF0F3.toInt(), 0xFF9D2F4C.toInt(), true, true),
@@ -41,6 +42,10 @@ enum class FrameStyle(
     /** Tambahan margin kiri-kanan (untuk lubang film). */
     fun extraSide(layout: LayoutType): Float =
         if (this == FILM) (if (layout == LayoutType.STRIP_2X6) 34f else 50f) else 0f
+
+    /** Ruang judul di bagian atas (untuk bingkai bergaya kartu). */
+    fun headerH(layout: LayoutType): Float =
+        if (this == SKETSA) (if (layout == LayoutType.STRIP_2X6) 100f else 150f) else 0f
 }
 
 /** Jenis acara yang tampil di menu layar awal, masing-masing dengan bingkai sesuai tema. */
@@ -54,7 +59,7 @@ enum class EventType(
 ) {
     PERNIKAHAN(
         "Pernikahan", "\uD83D\uDC8D", 0xFFB8892F.toInt(), "The Wedding of", "Nama & Nama",
-        listOf(FrameStyle.ELEGAN_EMAS, FrameStyle.BUNGA, FrameStyle.ROMANTIS, FrameStyle.POLAROID, FrameStyle.POLOS)
+        listOf(FrameStyle.SKETSA, FrameStyle.ELEGAN_EMAS, FrameStyle.BUNGA, FrameStyle.ROMANTIS, FrameStyle.POLAROID, FrameStyle.POLOS)
     ),
     WISUDA(
         "Wisuda", "\uD83C\uDF93", 0xFF2A4A8A.toInt(), "Selamat Wisuda", "Wisuda 2026",
@@ -148,6 +153,23 @@ object Frames {
                 flower(c, w - 20f * k, 22f * k, 14f * k, 0xFFF9C9A8.toInt())
                 flower(c, 22f * k, h - 26f * k, 14f * k, 0xFFF9C9A8.toInt())
                 divider(c, footer, k, 0xFFD98A9B.toInt())
+            }
+            FrameStyle.SKETSA -> {
+                val pink = stroke(0xFFE39AA6.toInt(), 2.2f * k)
+                val faint = stroke(0xFFE39AA6.toInt(), 1.8f * k, 110)
+                // Bunga line-art di tepi foto, seperti sketsa tangan
+                if (slots.isNotEmpty()) {
+                    sketchSprig(c, 6f * k, slots[0].bottom + 95f * k, k * 1.4f, 1f, pink)
+                    sketchFlower(c, w - 34f * k, slots[0].top + 4f * k, 34f * k, pink, 15f)
+                    sketchLeaf(c, w - 34f * k, slots[0].top + 42f * k, 46f * k, 70f, pink)
+                    sketchLeaf(c, w - 60f * k, slots[0].top - 6f * k, 36f * k, 200f, pink)
+                    sketchFlower(c, w - 26f * k, slots.last().top + 70f * k, 30f * k, pink, -10f)
+                    sketchLeaf(c, w - 30f * k, slots.last().top + 104f * k, 40f * k, 110f, pink)
+                }
+                // Bunga samar di area nama
+                sketchFlower(c, footer.left + 40f * k, footer.bottom - 50f * k, 46f * k, faint, 20f)
+                sketchSprig(c, footer.right - 10f * k, footer.bottom - 10f * k, k * 1.2f, -1f, faint)
+                sketchFlower(c, footer.centerX() + 20f * k, footer.bottom - 30f * k, 30f * k, faint, -25f)
             }
             FrameStyle.ROMANTIS -> {
                 val rose = 0xFFD9577A.toInt()
@@ -344,6 +366,48 @@ object Frames {
         val knot = Path().apply { moveTo(cx - 4f * k, cy + rh + 5f * k); lineTo(cx + 4f * k, cy + rh + 5f * k); lineTo(cx, cy + rh - 1f * k); close() }
         c.drawPath(knot, fill(color))
         c.drawOval(RectF(cx - rw * 0.55f, cy - rh * 0.7f, cx - rw * 0.15f, cy - rh * 0.2f), fill(Color.WHITE, 110))
+    }
+
+    private fun sketchFlower(c: Canvas, cx: Float, cy: Float, r: Float, p: Paint, rot: Float) {
+        c.save()
+        c.rotate(rot, cx, cy)
+        for (i in 0 until 6) {
+            c.save()
+            c.rotate(i * 60f, cx, cy)
+            c.drawOval(RectF(cx - r * 0.3f, cy - r, cx + r * 0.3f, cy - r * 0.12f), p)
+            c.restore()
+        }
+        c.drawCircle(cx, cy, r * 0.16f, p)
+        c.restore()
+    }
+
+    private fun sketchLeaf(c: Canvas, x: Float, y: Float, len: Float, angle: Float, p: Paint) {
+        c.save()
+        c.rotate(angle, x, y)
+        val path = Path().apply {
+            moveTo(x, y)
+            quadTo(x + len * 0.5f, y - len * 0.38f, x + len, y)
+            quadTo(x + len * 0.5f, y + len * 0.38f, x, y)
+        }
+        c.drawPath(path, p)
+        c.drawLine(x, y, x + len * 0.8f, y, p)
+        c.restore()
+    }
+
+    /** Tangkai bunga melengkung dengan daun dan kuncup. */
+    private fun sketchSprig(c: Canvas, x: Float, y: Float, k: Float, dir: Float, p: Paint) {
+        val tipX = x + dir * 46f * k
+        val tipY = y - 110f * k
+        val stem = Path().apply {
+            moveTo(x, y)
+            cubicTo(x + dir * 34f * k, y - 24f * k, x + dir * 12f * k, y - 70f * k, tipX, tipY)
+        }
+        c.drawPath(stem, p)
+        sketchFlower(c, tipX, tipY - 6f * k, 24f * k, p, 10f * dir)
+        sketchLeaf(c, x + dir * 22f * k, y - 30f * k, 30f * k, if (dir > 0) -40f else 220f, p)
+        sketchLeaf(c, x + dir * 20f * k, y - 66f * k, 26f * k, if (dir > 0) 200f else -20f, p)
+        c.drawCircle(x + dir * 52f * k, y - 52f * k, 7f * k, p)
+        c.drawLine(x + dir * 24f * k, y - 46f * k, x + dir * 47f * k, y - 50f * k, p)
     }
 
     private fun heart(c: Canvas, cx: Float, cy: Float, s: Float, p: Paint) {

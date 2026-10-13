@@ -34,7 +34,9 @@ class CollageSpec(
     val serif: Boolean,
     val logo: Bitmap?,
     val overlay: Bitmap?,
-    val frame: FrameStyle = FrameStyle.POLOS
+    val frame: FrameStyle = FrameStyle.POLOS,
+    val header: String = "",
+    val script: Typeface? = null
 ) {
     fun recycle() {
         logo?.recycle(); overlay?.recycle()
@@ -51,7 +53,9 @@ class CollageSpec(
             serif = p.fontSerif,
             logo = Storage.loadUriBitmap(ctx, p.logoUri, 900),
             overlay = if (frame == FrameStyle.CUSTOM) Storage.loadUriBitmap(ctx, p.overlayUri, 1800) else null,
-            frame = frame
+            frame = frame,
+            header = p.homeTitle,
+            script = if (frame == FrameStyle.SKETSA) Fonts.script(ctx) else null
         )
     }
 }
@@ -60,13 +64,13 @@ object Collage {
 
     private class Geometry(val slots: List<RectF>, val footer: RectF)
 
-    private fun geometry(layout: LayoutType, n: Int, extra: Float): Geometry {
+    private fun geometry(layout: LayoutType, n: Int, extra: Float, header: Float): Geometry {
         val w = layout.width.toFloat()
         val h = layout.height.toFloat()
         return when (layout) {
             LayoutType.STRIP_2X6 -> {
                 val m = 36f; val gap = 20f; val footerH = 330f
-                val top = m; val bottom = h - footerH
+                val top = m + header; val bottom = h - footerH
                 val slotH = (bottom - top - gap * (n - 1)) / n
                 val slots = (0 until n).map { i ->
                     val y = top + i * (slotH + gap)
@@ -76,7 +80,7 @@ object Collage {
             }
             LayoutType.GRID_4X6 -> {
                 val m = 50f; val gap = 30f; val footerH = 360f
-                val area = RectF(m + extra, m, w - m - extra, h - footerH)
+                val area = RectF(m + extra, m + header, w - m - extra, h - footerH)
                 val cw = (area.width() - gap) / 2f
                 val ch = (area.height() - gap) / 2f
                 val slots = when (n) {
@@ -113,10 +117,11 @@ object Collage {
         val w = L.width.toFloat()
         val h = L.height.toFloat()
         val k = w / 600f
-        val geo = geometry(L, photos.size.coerceIn(1, 4), st.extraSide(L))
+        val headerH = st.headerH(L)
+        val geo = geometry(L, photos.size.coerceIn(1, 4), st.extraSide(L), headerH)
         Frames.background(st, c, w, h, geo.slots, k)
         val radius = when (st) {
-            FrameStyle.POLAROID, FrameStyle.FILM, FrameStyle.KORPORAT -> 2f
+            FrameStyle.POLAROID, FrameStyle.FILM, FrameStyle.KORPORAT, FrameStyle.SKETSA -> 0f
             else -> if (L == LayoutType.STRIP_2X6) 10f else 16f
         }
         geo.slots.forEachIndexed { i, r ->
@@ -125,7 +130,8 @@ object Collage {
         }
         Frames.foreground(st, c, w, h, geo.slots, geo.footer, k)
 
-        drawFooter(c, spec, geo.footer)
+        if (headerH > 0f) drawHeader(c, spec, RectF(36f * k, 14f * k, w - 36f * k, geo.slots.first().top - 8f * k))
+        if (st == FrameStyle.SKETSA) drawScriptFooter(c, spec, geo.footer, k) else drawFooter(c, spec, geo.footer)
 
         if (st == FrameStyle.CUSTOM) spec.overlay?.let { ov ->
             c.drawBitmap(ov, null, Rect(0, 0, L.width, L.height), Paint(Paint.FILTER_BITMAP_FLAG))
@@ -200,6 +206,105 @@ object Collage {
             c.drawText(text, area.centerX(), baseline, p)
             y += lineH
         }
+    }
+
+    /** Judul kecil di atas foto (mis. "PHOTO PLACE"), atau logo jika ada. */
+    private fun drawHeader(c: Canvas, spec: CollageSpec, area: RectF) {
+        val logo = spec.logo
+        if (logo != null) {
+            val lh = area.height() * 0.8f
+            val lw = min(area.width() * 0.6f, lh * logo.width / logo.height)
+            val realH = lw * logo.height / logo.width
+            c.drawBitmap(logo, null, RectF(area.centerX() - lw / 2f, area.centerY() - realH / 2f, area.centerX() + lw / 2f, area.centerY() + realH / 2f), Paint(Paint.FILTER_BITMAP_FLAG))
+            return
+        }
+        val text = spec.header.uppercase()
+        if (text.isBlank()) return
+        val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF2B2B2B.toInt()
+            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+            letterSpacing = 0.08f
+            textSize = area.height() * 0.42f
+        }
+        val words = text.split(" ").filter { it.isNotBlank() }
+        // Dua baris jika teks cukup panjang (seperti "PHOTO / PLACE").
+        val lines = if (words.size >= 2 && p.measureText(text) > area.width() * 0.5f) {
+            val half = (words.size + 1) / 2
+            listOf(words.take(half).joinToString(" "), words.drop(half).joinToString(" "))
+        } else listOf(text)
+        if (lines.size == 2) p.textSize = area.height() * 0.34f
+        lines.forEach { while (p.measureText(it) > area.width() * 0.9f && p.textSize > 10f) p.textSize *= 0.92f }
+        val lineH = p.fontSpacing * 0.92f
+        var y = area.centerY() - lineH * lines.size / 2f
+        lines.forEach {
+            c.drawText(it, area.centerX(), y + lineH * 0.8f, p)
+            y += lineH
+        }
+    }
+
+    /** Nama bergaya tulisan tangan: "Nama & Nama" dibuat bertingkat seperti undangan. */
+    private fun drawScriptFooter(c: Canvas, spec: CollageSpec, area: RectF, k: Float) {
+        val st = spec.frame
+        val ink = st.text ?: spec.textColor
+        val small = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF6B6B6B.toInt(); textSize = 19f * k; typeface = Typeface.SANS_SERIF; letterSpacing = 0.06f
+        }
+        val topLine = area.top + 26f * k
+        if (spec.date.isNotBlank()) {
+            small.textAlign = Paint.Align.RIGHT
+            c.drawText(spec.date, area.right - 4f * k, topLine, small)
+        }
+        if (spec.subtitle.isNotBlank()) {
+            small.textAlign = Paint.Align.LEFT
+            val sub = spec.subtitle.uppercase()
+            while (small.measureText(sub) > area.width() * 0.5f && small.textSize > 8f) small.textSize *= 0.92f
+            c.drawText(sub, area.left + 4f * k, topLine, small)
+        }
+
+        val face = spec.script ?: Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC)
+        val np = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = ink; typeface = face; textSize = 60f * k; textAlign = Paint.Align.CENTER
+        }
+        val parts = spec.title.split("&").map { it.trim() }.filter { it.isNotBlank() }
+        val block = RectF(area.left, topLine + 8f * k, area.right, area.bottom)
+        val maxW = area.width() * 0.82f
+        if (parts.size >= 2) {
+            val a = parts[0]
+            val b = parts.drop(1).joinToString(" & ")
+            while ((np.measureText(a) > maxW || np.measureText(b) > maxW) && np.textSize > 12f) np.textSize *= 0.93f
+            val amp = Paint(np).apply { textSize = np.textSize * 0.6f }
+            val lineH = np.fontSpacing * 0.82f
+            val ampH = amp.fontSpacing * 0.7f
+            val total = lineH * 2 + ampH
+            var y = block.top + (block.height() - total) / 2f
+            val shift = area.width() * 0.07f
+            c.drawText(a, block.centerX() - shift, y + lineH * 0.78f, np)
+            y += lineH
+            c.drawText("&", block.centerX() + shift * 0.6f, y + ampH * 0.8f, amp)
+            y += ampH
+            c.drawText(b, block.centerX() + shift, y + lineH * 0.78f, np)
+        } else if (parts.isNotEmpty()) {
+            val t = parts[0]
+            while (np.measureText(t) > maxW && np.textSize > 12f) np.textSize *= 0.93f
+            c.drawText(t, block.centerX(), block.centerY() - (np.descent() + np.ascent()) / 2f, np)
+        }
+    }
+
+    /** Lembar 4x6 berisi dua strip BERBEDA (dari dua sesi foto). */
+    fun printSheetPair(a: Bitmap, b: Bitmap): Bitmap {
+        val sheet = Bitmap.createBitmap(1200, 1800, Bitmap.Config.ARGB_8888)
+        val c = Canvas(sheet)
+        c.drawColor(Color.WHITE)
+        c.drawBitmap(a, null, Rect(0, 0, 600, 1800), Paint(Paint.FILTER_BITMAP_FLAG))
+        c.drawBitmap(b, null, Rect(600, 0, 1200, 1800), Paint(Paint.FILTER_BITMAP_FLAG))
+        val cut = Paint().apply {
+            color = Color.argb(110, 128, 128, 128); strokeWidth = 2f
+            pathEffect = DashPathEffect(floatArrayOf(14f, 10f), 0f)
+        }
+        c.drawLine(600f, 0f, 600f, 24f, cut)
+        c.drawLine(600f, 1776f, 600f, 1800f, cut)
+        return sheet
     }
 
     /**

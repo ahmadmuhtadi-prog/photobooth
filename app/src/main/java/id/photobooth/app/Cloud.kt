@@ -92,7 +92,10 @@ object CloudSync {
         }
         try {
             val folder = p.homeTitle.ifBlank { "Photobooth" }
-            val url = CloudUploader.upload(p.cloudUrl, p.cloudKey, File(dir, Storage.COLLAGE), "${dir.name}.jpg", folder)
+            // Jika ada lembar berisi 2 strip, itu yang diunggah (berisi kedua foto).
+            val sheet = File(dir, Storage.SHEET)
+            val src = if (sheet.exists()) sheet else File(dir, Storage.COLLAGE)
+            val url = CloudUploader.upload(p.cloudUrl, p.cloudKey, src, "${dir.name}.jpg", folder)
             File(dir, MARKER).writeText(url)
             return url
         } finally {
@@ -108,6 +111,8 @@ object CloudSync {
             val dirs = Storage.sessionsRoot(app).listFiles()?.filter { it.isDirectory }?.sortedBy { it.name } ?: return@execute
             for (dir in dirs) {
                 if (!File(dir, Storage.COLLAGE).exists() || cloudUrl(dir) != null || inFlight.contains(dir.name)) continue
+                // Lewati sesi yang mungkin masih berlangsung (menunggu strip ke-2).
+                if (System.currentTimeMillis() - dir.lastModified() < 5 * 60_000L) continue
                 try {
                     uploadSession(app, dir)
                 } catch (e: Exception) {

@@ -46,6 +46,9 @@ class SettingsActivity : BaseActivity() {
     private var textEvent = EventType.PERNIKAHAN
     private lateinit var swGuestFrame: SwitchCompat
     private lateinit var swAllFrames: SwitchCompat
+    private lateinit var etLabel: EditText
+    private lateinit var swTwoStrips: SwitchCompat
+    private lateinit var txtFont: TextView
     private lateinit var etTitle: EditText
     private lateinit var etSubtitle: EditText
     private lateinit var etDate: EditText
@@ -85,6 +88,13 @@ class SettingsActivity : BaseActivity() {
     private val pickLogo = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) { persist(uri); logoUri = uri.toString(); refreshFileLabels() }
     }
+    private val pickFont = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val ok = Fonts.install(this, uri)
+            toast(if (ok) "Font tulisan tangan terpasang" else "File bukan font .ttf/.otf yang valid")
+            refreshFileLabels()
+        }
+    }
     private val pickOverlay = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) { persist(uri); overlayUri = uri.toString(); refreshFileLabels() }
     }
@@ -117,7 +127,7 @@ class SettingsActivity : BaseActivity() {
         note("Acara yang tampil di menu:")
         val enabled = p.enabledEvents
         EventType.values().forEach { ev ->
-            eventSwitches[ev] = switch("${ev.emoji}  ${ev.label}  (${ev.frames.size} bingkai)", ev in enabled)
+            eventSwitches[ev] = switch("${ev.emoji}  ${p.labelFor(ev)}  (${ev.frames.size} bingkai)", ev in enabled)
         }
         spEvent = spinner("Acara langsung (dipakai jika menu dimatikan)", EventType.values().map { it.label }, p.eventType.ordinal)
         swGuestFrame = switch("Tamu boleh memilih bingkai di layar foto", p.guestChooseFrame)
@@ -125,7 +135,8 @@ class SettingsActivity : BaseActivity() {
 
         section("Teks Bingkai per Acara")
         textEvent = p.eventType
-        spTextEvent = spinner("Atur teks untuk acara", EventType.values().map { "${it.emoji}  ${it.label}" }, textEvent.ordinal)
+        spTextEvent = spinner("Pilih acara yang ingin diubah", EventType.values().map { "${it.emoji}  ${p.labelFor(it)}" }, textEvent.ordinal)
+        etLabel = edit("Nama acara di menu layar awal (mis. Wisuda UNM 2026 / CFD Pantai Losari)", p.labelFor(textEvent))
         etTitle = edit("Judul (mis. nama pengantin / nama kampus / nama komunitas)", p.titleFor(textEvent))
         etSubtitle = edit("Sub judul (mis. The Wedding of / Selamat Wisuda / Car Free Day)", p.subtitleFor(textEvent))
         row(
@@ -133,6 +144,12 @@ class SettingsActivity : BaseActivity() {
         )
         etDate = edit("Tanggal acara (berlaku untuk semua acara)", p.eventDate)
         spFont = spinner("Gaya huruf (untuk bingkai Polos & Bingkai Saya)", listOf("Elegan (Serif)", "Modern (Sans)"), if (p.fontSerif) 0 else 1)
+        note("Bingkai Sketsa Bunga menulis nama dengan huruf tulisan tangan. Untuk nama pengantin, tulis dengan tanda &, mis. \"Nasrina & Achmad\".")
+        row(
+            button("Pilih Font Tulisan Tangan") { pickFont.launch(arrayOf("*/*")) },
+            button("Pakai Font Bawaan") { Fonts.scriptFile(this).delete(); refreshFileLabels() }
+        )
+        txtFont = note("")
         row(
             button("Pilih Logo") { pickLogo.launch(arrayOf("image/*")) },
             button("Hapus Logo") { logoUri = ""; refreshFileLabels() }
@@ -142,6 +159,8 @@ class SettingsActivity : BaseActivity() {
         section("Template & Tata Letak")
         spLayout = spinner("Format kolase", LayoutType.values().map { it.label }, p.layout.ordinal)
         spShots = spinner("Jumlah jepretan per sesi", shotOpts.map { "$it foto" }, shotOpts.indexOf(p.shotCount).coerceAtLeast(0))
+        swTwoStrips = switch("Format strip: foto 2 kali agar 2 strip di lembar cetak berbeda", p.twoStrips)
+        note("Jika aktif, setelah strip pertama tamu berfoto sekali lagi (bingkai boleh sama atau berbeda). Lembar 4x6 berisi 2 strip yang berbeda.")
         spFrame = spinner("Warna latar (untuk bingkai Polos & Bingkai Saya)", Palette.frameColors.map { it.first }, p.frameColorIndex)
         spText = spinner("Warna teks (untuk bingkai Polos & Bingkai Saya)", Palette.textColors.map { it.first }, p.textColorIndex)
         row(
@@ -195,9 +214,10 @@ class SettingsActivity : BaseActivity() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (position == lastText) return
                 // Simpan teks acara sebelumnya, lalu tampilkan teks acara yang baru dipilih.
-                prefs.setTextFor(textEvent, etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
+                prefs.setTextFor(textEvent, etLabel.text.toString().trim(), etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
                 lastText = position
                 textEvent = EventType.values()[position]
+                etLabel.setText(prefs.labelFor(textEvent))
                 etTitle.setText(prefs.titleFor(textEvent))
                 etSubtitle.setText(prefs.subtitleFor(textEvent))
             }
@@ -212,7 +232,8 @@ class SettingsActivity : BaseActivity() {
         p.homeTitle = etHomeTitle.text.toString().trim()
         p.eventMenu = swMenu.isChecked
         p.enabledEvents = eventSwitches.filterValues { it.isChecked }.keys
-        p.setTextFor(textEvent, etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
+        p.setTextFor(textEvent, etLabel.text.toString().trim(), etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
+        p.twoStrips = swTwoStrips.isChecked
         p.eventDate = etDate.text.toString().trim()
         p.fontSerif = spFont.selectedItemPosition == 0
         p.eventType = EventType.values()[spEvent.selectedItemPosition]
@@ -250,6 +271,7 @@ class SettingsActivity : BaseActivity() {
     private fun refreshFileLabels() {
         txtLogo.text = if (logoUri.isBlank()) "Logo: (tidak ada)" else "Logo: terpilih ✓"
         txtOverlay.text = if (overlayUri.isBlank()) "Bingkai PNG: (tidak ada)" else "Bingkai PNG: terpilih ✓"
+        txtFont.text = if (Fonts.scriptFile(this).exists()) "Font tulisan tangan: file sendiri ✓" else "Font tulisan tangan: bawaan tablet"
     }
 
     private fun refreshStatus() {

@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -17,6 +18,8 @@ import java.util.Locale
 
 object Storage {
     const val COLLAGE = "kolase.jpg"
+    const val COLLAGE2 = "kolase_2.jpg"
+    const val SHEET = "lembar_cetak.jpg"
     private val rnd = SecureRandom()
     private const val CHARS = "abcdefghijkmnpqrstuvwxyz23456789"
 
@@ -73,5 +76,25 @@ object Storage {
         var s = 1
         while (w / (s * 2) >= maxSide || h / (s * 2) >= maxSide) s *= 2
         return s
+    }
+}
+
+/** Font tulisan tangan untuk nama (bisa diganti operator dengan file .ttf sendiri). */
+object Fonts {
+    fun scriptFile(ctx: Context) = File(ctx.filesDir, "font_tulisan_tangan.ttf")
+
+    fun script(ctx: Context): Typeface {
+        val f = scriptFile(ctx)
+        if (f.exists()) runCatching { return Typeface.createFromFile(f) }
+        return Typeface.create("cursive", Typeface.NORMAL)
+    }
+
+    fun install(ctx: Context, uri: Uri): Boolean = try {
+        val tmp = File(ctx.filesDir, "font_tmp.ttf")
+        ctx.contentResolver.openInputStream(uri)?.use { input -> tmp.outputStream().use { input.copyTo(it) } }
+        Typeface.createFromFile(tmp) // uji apakah file font valid
+        tmp.renameTo(scriptFile(ctx))
+    } catch (e: Exception) {
+        false
     }
 }

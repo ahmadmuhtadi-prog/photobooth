@@ -71,7 +71,10 @@ class ResultActivity : BaseActivity() {
         updatePrintButton()
 
         lifecycleScope.launch {
-            val bmp = withContext(Dispatchers.IO) { Storage.decodeFile(File(dir, Storage.COLLAGE), 1400) }
+            val bmp = withContext(Dispatchers.IO) {
+                val sheet = File(dir, Storage.SHEET)
+                Storage.decodeFile(if (sheet.exists()) sheet else File(dir, Storage.COLLAGE), 1400)
+            }
             findViewById<ImageView>(R.id.collageView).setImageBitmap(bmp)
         }
         setupQr()
@@ -180,6 +183,9 @@ class ResultActivity : BaseActivity() {
         updatePrintButton()
         lifecycleScope.launch {
             val sheet = withContext(Dispatchers.IO) {
+                // Dua strip berbeda sudah digabung saat sesi foto.
+                val pair = File(dir, Storage.SHEET)
+                if (pair.exists()) return@withContext Storage.decodeFile(pair, 1800)
                 val full = Storage.decodeFile(File(dir, Storage.COLLAGE), 1800) ?: return@withContext null
                 val layout = if (full.width * 2 <= full.height) LayoutType.STRIP_2X6 else LayoutType.GRID_4X6
                 val s = Collage.printSheet(full, layout)

@@ -21,8 +21,14 @@ class Prefs(ctx: Context) {
     var homeTitle: String get() = str("home_title", "Photobooth"); set(v) = putStr("home_title", v)
     fun titleFor(ev: EventType): String = str("title_" + ev.name, ev.titleDefault)
     fun subtitleFor(ev: EventType): String = str("subtitle_" + ev.name, ev.subtitle)
-    fun setTextFor(ev: EventType, title: String, subtitle: String) {
-        sp.edit().putString("title_" + ev.name, title).putString("subtitle_" + ev.name, subtitle).apply()
+    /** Nama acara yang tampil di menu layar awal (bisa diganti operator). */
+    fun labelFor(ev: EventType): String = str("label_" + ev.name, ev.label).ifBlank { ev.label }
+    fun setTextFor(ev: EventType, label: String, title: String, subtitle: String) {
+        sp.edit()
+            .putString("label_" + ev.name, label)
+            .putString("title_" + ev.name, title)
+            .putString("subtitle_" + ev.name, subtitle)
+            .apply()
     }
 
     var eventDate: String
@@ -49,6 +55,9 @@ class Prefs(ctx: Context) {
         set(v) = sp.edit().putStringSet("enabled_events", v.map { it.name }.toSet()).apply()
     var guestChooseFrame: Boolean get() = bool("guest_frame", true); set(v) = putBool("guest_frame", v)
     var showAllFrames: Boolean get() = bool("all_frames", false); set(v) = putBool("all_frames", v)
+
+    /** Format strip: foto 2 kali agar 2 strip di lembar cetak berbeda. */
+    var twoStrips: Boolean get() = bool("two_strips", true); set(v) = putBool("two_strips", v)
 
     // --- Tata letak ---
     var layout: LayoutType

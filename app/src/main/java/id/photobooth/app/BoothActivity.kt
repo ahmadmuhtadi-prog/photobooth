@@ -68,7 +68,15 @@ class BoothActivity : BaseActivity() {
     private lateinit var cameraExecutor: ExecutorService
 
     private val idleHandler = Handler(Looper.getMainLooper())
-    private val idleTimeout = Runnable { if (!running) finish() }
+    /** Sesi bagian 1 / 2 (format strip: 2 kali foto untuk 2 strip berbeda). */
+    private var part = 1
+    private var firstSessionId: String? = null
+    private val idleTimeout = Runnable {
+        if (!running) {
+            val first = firstSessionId
+            if (part == 2 && first != null) openResult(first) else finish()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,7 +100,10 @@ class BoothActivity : BaseActivity() {
         buildFrameChips()
         infoText.text = "Atur posisi, pilih bingkai & filter, lalu tekan MULAI"
         findViewById<Button>(R.id.btnStart).setOnClickListener { startSession() }
-        findViewById<Button>(R.id.btnBack).setOnClickListener { finish() }
+        findViewById<Button>(R.id.btnBack).setOnClickListener {
+            val first = firstSessionId
+            if (part == 2 && first != null) openResult(first) else finish()
+        }
 
         startCamera()
         resetIdle()
@@ -121,7 +132,7 @@ class BoothActivity : BaseActivity() {
 
     private fun buildFrameChips() {
         frameOptions = Frames.available(prefs, event)
-        findViewById<TextView>(R.id.frameLabel).text = "${event.emoji} ${event.label} \u2014 pilih bingkai"
+        findViewById<TextView>(R.id.frameLabel).text = "${event.emoji} ${prefs.labelFor(event)} \u2014 pilih bingkai"
         selectedFrame = frameOptions.first()
         val show = prefs.guestChooseFrame && frameOptions.size > 1
         findViewById<View>(R.id.frameLabel).visibility = if (show) View.VISIBLE else View.GONE
@@ -314,7 +325,7 @@ class BoothActivity : BaseActivity() {
             try {
                 val n = prefs.shotCount
                 for (i in 1..n) {
-                    infoText.text = "Foto $i dari $n"
+                    infoText.text = if (part == 2) "Strip 2 \u2022 Foto $i dari $n" else "Foto $i dari $n"
                     countdown(prefs.countdownSec)
                     val bmp = capture()
                     flash()
@@ -329,8 +340,11 @@ class BoothActivity : BaseActivity() {
                 countdownText.text = ""
                 infoText.text = "Memproses foto..."
                 val sessionId = withContext(Dispatchers.Default) { processSession() }
-                startActivity(Intent(this@BoothActivity, ResultActivity::class.java).putExtra(ResultActivity.EXTRA_SESSION, sessionId))
-                finish()
+                if (part == 1 && needsSecondStrip()) {
+                    prepareSecondStrip(sessionId)
+                } else {
+                    openResult(sessionId)
+                }
             } catch (e: Exception) {
                 Toast.makeText(this@BoothActivity, "Terjadi kesalahan: ${e.message}", Toast.LENGTH_LONG).show()
                 thumbView.setImageDrawable(null)
@@ -344,6 +358,42 @@ class BoothActivity : BaseActivity() {
                 resetIdle()
             }
         }
+    }
+
+    private fun needsSecondStrip() = prefs.twoStrips && prefs.layout == LayoutType.STRIP_2X6
+
+    private fun openResult(sessionId: String) {
+        idleHandler.removeCallbacks(idleTimeout)
+        startActivity(Intent(this, ResultActivity::class.java).putExtra(ResultActivity.EXTRA_SESSION, sessionId))
+        finish()
+    }
+
+    /** Strip pertama selesai: kembali ke kamera untuk strip ke-2 (bingkai boleh sama/berbeda). */
+    private fun prepareSecondStrip(sessionId: String) {
+        firstSessionId = sessionId
+        part = 2
+        thumbView.setImageDrawable(null)
+        shots.forEach { if (!it.isRecycled) it.recycle() }
+        shots.clear()
+        lifecycleScope.launch {
+            val strip = withContext(Dispatchers.IO) { Storage.decodeFile(File(Storage.sessionDir(this@BoothActivity, sessionId), Storage.COLLAGE), 600) }
+            if (strip != null) {
+                thumbView.layoutParams = thumbView.layoutParams.apply {
+                    width = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 70f, resources.displayMetrics).toInt()
+                    height = width * 3
+                }
+                thumbView.scaleType = ImageView.ScaleType.FIT_CENTER
+                thumbView.setImageBitmap(strip)
+                thumbView.visibility = View.VISIBLE
+            }
+        }
+        countdownText.text = ""
+        infoText.text = "Strip 1 selesai! Sekarang foto ke-2 \u2014 boleh ganti bingkai atau pakai yang sama"
+        findViewById<Button>(R.id.btnStart).text = "MULAI FOTO KE-2"
+        findViewById<Button>(R.id.btnBack).text = "LEWATI"
+        controls.visibility = View.VISIBLE
+        running = false
+        resetIdle()
     }
 
     private suspend fun countdown(sec: Int) {
@@ -370,19 +420,35 @@ class BoothActivity : BaseActivity() {
 
     /** Berjalan di thread latar: filter, simpan, susun kolase. */
     private fun processSession(): String {
-        val id = Storage.newSessionId()
+        val second = part == 2 && firstSessionId != null
+        val id = if (second) firstSessionId!! else Storage.newSessionId()
         val dir = Storage.sessionDir(this, id)
+        val prefix = if (second) "foto2_" else "foto_"
         val filtered = mutableListOf<Bitmap>()
         shots.forEachIndexed { i, b ->
             val f = filter.apply(b)
-            Storage.saveJpeg(f, File(dir, "foto_${i + 1}.jpg"), 90)
+            Storage.saveJpeg(f, File(dir, "$prefix${i + 1}.jpg"), 90)
             filtered += f
         }
         val spec = CollageSpec.fromPrefs(this, prefs, event, selectedFrame)
         val collage = Collage.render(spec, filtered)
-        val collageFile = File(dir, Storage.COLLAGE)
+        val collageFile = File(dir, if (second) Storage.COLLAGE2 else Storage.COLLAGE)
         Storage.saveJpeg(collage, collageFile, 95)
-        if (prefs.saveToGallery) runCatching { Storage.exportToGallery(this, collageFile, "photobooth_$id.jpg") }
+
+        if (second) {
+            // Gabungkan strip 1 + strip 2 menjadi satu lembar cetak 4x6.
+            val first = Storage.decodeFile(File(dir, Storage.COLLAGE), 1800)
+            if (first != null) {
+                val sheet = Collage.printSheetPair(first, collage)
+                val sheetFile = File(dir, Storage.SHEET)
+                Storage.saveJpeg(sheet, sheetFile, 95)
+                if (prefs.saveToGallery) runCatching { Storage.exportToGallery(this, sheetFile, "photobooth_${id}_lembar.jpg") }
+                sheet.recycle()
+                first.recycle()
+            }
+        } else if (prefs.saveToGallery) {
+            runCatching { Storage.exportToGallery(this, collageFile, "photobooth_$id.jpg") }
+        }
 
         collage.recycle()
         spec.recycle()

@@ -114,7 +114,7 @@ class HomeActivity : BaseActivity() {
             gravity = Gravity.CENTER
         })
         box.addView(TextView(this).apply {
-            text = ev.label
+            text = prefs.labelFor(ev)
             textSize = 21f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(0xFFFFFFFF.toInt())
