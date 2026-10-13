@@ -38,8 +38,12 @@ class SettingsActivity : BaseActivity() {
     private val muted = 0xFFB3AAB8.toInt()
 
     // Kontrol
+    private lateinit var etHomeTitle: EditText
+    private lateinit var swMenu: SwitchCompat
     private lateinit var spEvent: Spinner
-    private lateinit var spFrameStyle: Spinner
+    private val eventSwitches = mutableMapOf<EventType, SwitchCompat>()
+    private lateinit var spTextEvent: Spinner
+    private var textEvent = EventType.PERNIKAHAN
     private lateinit var swGuestFrame: SwitchCompat
     private lateinit var swAllFrames: SwitchCompat
     private lateinit var etTitle: EditText
@@ -107,18 +111,27 @@ class SettingsActivity : BaseActivity() {
         heading("Pengaturan Photobooth")
         note("Tekan SIMPAN di bawah setelah mengubah pengaturan.")
 
-        section("Jenis Acara & Bingkai")
-        spEvent = spinner("Jenis acara", EventType.values().map { it.label }, p.eventType.ordinal)
-        note("Mengganti jenis acara otomatis menyesuaikan sub judul dan bingkai rekomendasi.")
-        spFrameStyle = spinner("Bingkai utama", FrameStyle.values().map { it.label }, p.frameStyle.ordinal)
-        swGuestFrame = switch("Tamu boleh memilih bingkai sendiri di layar foto", p.guestChooseFrame)
-        swAllFrames = switch("Tampilkan semua bingkai (bukan hanya rekomendasi acara)", p.showAllFrames)
-        button("Pratinjau Semua Bingkai") { save(false); previewAll() }
+        section("Menu Acara di Layar Awal")
+        etHomeTitle = edit("Judul layar awal (mis. nama vendor / instansi)", p.homeTitle)
+        swMenu = switch("Tampilkan menu pilihan acara di layar awal", p.eventMenu)
+        note("Acara yang tampil di menu:")
+        val enabled = p.enabledEvents
+        EventType.values().forEach { ev ->
+            eventSwitches[ev] = switch("${ev.emoji}  ${ev.label}  (${ev.frames.size} bingkai)", ev in enabled)
+        }
+        spEvent = spinner("Acara langsung (dipakai jika menu dimatikan)", EventType.values().map { it.label }, p.eventType.ordinal)
+        swGuestFrame = switch("Tamu boleh memilih bingkai di layar foto", p.guestChooseFrame)
+        swAllFrames = switch("Tampilkan semua bingkai di setiap acara (bukan hanya yang sesuai tema)", p.showAllFrames)
 
-        section("Teks & Watermark")
-        etTitle = edit("Judul utama (mis. nama pengantin / perusahaan)", p.eventTitle)
-        etSubtitle = edit("Sub judul (mis. The Wedding of / Gathering 2026)", p.eventSubtitle)
-        etDate = edit("Tanggal acara", p.eventDate)
+        section("Teks Bingkai per Acara")
+        textEvent = p.eventType
+        spTextEvent = spinner("Atur teks untuk acara", EventType.values().map { "${it.emoji}  ${it.label}" }, textEvent.ordinal)
+        etTitle = edit("Judul (mis. nama pengantin / nama kampus / nama komunitas)", p.titleFor(textEvent))
+        etSubtitle = edit("Sub judul (mis. The Wedding of / Selamat Wisuda / Car Free Day)", p.subtitleFor(textEvent))
+        row(
+            button("Pratinjau Bingkai Acara Ini") { save(false); previewAll() }
+        )
+        etDate = edit("Tanggal acara (berlaku untuk semua acara)", p.eventDate)
         spFont = spinner("Gaya huruf (untuk bingkai Polos & Bingkai Saya)", listOf("Elegan (Serif)", "Modern (Sans)"), if (p.fontSerif) 0 else 1)
         row(
             button("Pilih Logo") { pickLogo.launch(arrayOf("image/*")) },
@@ -137,7 +150,6 @@ class SettingsActivity : BaseActivity() {
         )
         txtOverlay = note("")
         note("Bingkai PNG muncul sebagai pilihan \"Bingkai Saya (PNG)\". Bagian foto harus transparan. Ukuran ideal: 600x1800 px (strip) atau 1200x1800 px (4x6).")
-        button("Pratinjau Bingkai Utama") { save(false); preview() }
 
         section("Kamera & Alur Foto")
         swFront = switch("Gunakan kamera depan", p.useFrontCamera)
@@ -178,16 +190,16 @@ class SettingsActivity : BaseActivity() {
         refreshFileLabels()
         refreshStatus()
 
-        var lastEvent = p.eventType.ordinal
-        spEvent.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        var lastText = textEvent.ordinal
+        spTextEvent.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position == lastEvent) return
-                lastEvent = position
-                val ev = EventType.values()[position]
-                if (EventType.isDefaultSubtitle(etSubtitle.text.toString().trim())) etSubtitle.setText(ev.subtitle)
-                etTitle.hint = ev.titleHint
-                spFrameStyle.setSelection(ev.frames.first().ordinal)
-                toast("Bingkai rekomendasi: " + ev.frames.joinToString { it.label })
+                if (position == lastText) return
+                // Simpan teks acara sebelumnya, lalu tampilkan teks acara yang baru dipilih.
+                prefs.setTextFor(textEvent, etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
+                lastText = position
+                textEvent = EventType.values()[position]
+                etTitle.setText(prefs.titleFor(textEvent))
+                etSubtitle.setText(prefs.subtitleFor(textEvent))
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -197,12 +209,13 @@ class SettingsActivity : BaseActivity() {
 
     private fun save(close: Boolean) {
         val p = prefs
-        p.eventTitle = etTitle.text.toString().trim()
-        p.eventSubtitle = etSubtitle.text.toString().trim()
+        p.homeTitle = etHomeTitle.text.toString().trim()
+        p.eventMenu = swMenu.isChecked
+        p.enabledEvents = eventSwitches.filterValues { it.isChecked }.keys
+        p.setTextFor(textEvent, etTitle.text.toString().trim(), etSubtitle.text.toString().trim())
         p.eventDate = etDate.text.toString().trim()
         p.fontSerif = spFont.selectedItemPosition == 0
         p.eventType = EventType.values()[spEvent.selectedItemPosition]
-        p.frameStyle = FrameStyle.values()[spFrameStyle.selectedItemPosition]
         p.guestChooseFrame = swGuestFrame.isChecked
         p.showAllFrames = swAllFrames.isChecked
         p.logoUri = logoUri
@@ -255,7 +268,7 @@ class SettingsActivity : BaseActivity() {
     private fun preview() {
         lifecycleScope.launch {
             val bmp = withContext(Dispatchers.Default) {
-                val spec = CollageSpec.fromPrefs(this@SettingsActivity, prefs)
+                val spec = CollageSpec.fromPrefs(this@SettingsActivity, prefs, textEvent, Frames.available(prefs, textEvent).first())
                 val photos = Collage.samplePhotos(prefs.shotCount)
                 val c = Collage.render(spec, photos)
                 photos.forEach { it.recycle() }
@@ -280,7 +293,7 @@ class SettingsActivity : BaseActivity() {
         toast("Menyiapkan pratinjau...")
         lifecycleScope.launch {
             val strip = withContext(Dispatchers.Default) {
-                val frames = Frames.available(prefs)
+                val frames = Frames.available(prefs, textEvent)
                 val photos = Collage.samplePhotos(prefs.shotCount)
                 val L = prefs.layout
                 val th = 600
@@ -294,7 +307,7 @@ class SettingsActivity : BaseActivity() {
                     color = 0xFFF7F2EA.toInt(); textSize = 22f; textAlign = android.graphics.Paint.Align.CENTER
                 }
                 frames.forEachIndexed { i, f ->
-                    val spec = CollageSpec.fromPrefs(this@SettingsActivity, prefs, f)
+                    val spec = CollageSpec.fromPrefs(this@SettingsActivity, prefs, textEvent, f)
                     val full = Collage.render(spec, photos)
                     spec.recycle()
                     val x = gap + i * (tw + gap)
@@ -313,7 +326,7 @@ class SettingsActivity : BaseActivity() {
                 addView(iv, ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(420)))
             }
             AlertDialog.Builder(this@SettingsActivity)
-                .setTitle("Bingkai yang ditawarkan ke tamu")
+                .setTitle("Bingkai untuk acara ${textEvent.label}")
                 .setView(hs)
                 .setPositiveButton("Tutup", null)
                 .show()
@@ -332,7 +345,7 @@ class SettingsActivity : BaseActivity() {
                     val photos = Collage.samplePhotos(1)
                     Storage.saveJpeg(photos[0], f, 80)
                     photos[0].recycle()
-                    CloudUploader.upload(prefs.cloudUrl, prefs.cloudKey, f, "uji_photobooth.jpg", prefs.eventTitle.ifBlank { "Photobooth" })
+                    CloudUploader.upload(prefs.cloudUrl, prefs.cloudKey, f, "uji_photobooth.jpg", prefs.homeTitle.ifBlank { "Photobooth" })
                 }
             }
             txtCloudStatus.text = result.fold(

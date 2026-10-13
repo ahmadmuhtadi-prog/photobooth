@@ -17,9 +17,14 @@ class Prefs(ctx: Context) {
     private fun bool(k: String, d: Boolean) = sp.getBoolean(k, d)
     private fun putBool(k: String, v: Boolean) = sp.edit().putBoolean(k, v).apply()
 
-    // --- Acara / watermark ---
-    var eventTitle: String get() = str("title", "Nama & Nama"); set(v) = putStr("title", v)
-    var eventSubtitle: String get() = str("subtitle", "The Wedding of"); set(v) = putStr("subtitle", v)
+    // --- Layar awal & teks per acara ---
+    var homeTitle: String get() = str("home_title", "Photobooth"); set(v) = putStr("home_title", v)
+    fun titleFor(ev: EventType): String = str("title_" + ev.name, ev.titleDefault)
+    fun subtitleFor(ev: EventType): String = str("subtitle_" + ev.name, ev.subtitle)
+    fun setTextFor(ev: EventType, title: String, subtitle: String) {
+        sp.edit().putString("title_" + ev.name, title).putString("subtitle_" + ev.name, subtitle).apply()
+    }
+
     var eventDate: String
         get() = str("date", SimpleDateFormat("d MMMM yyyy", Locale("id", "ID")).format(Date()))
         set(v) = putStr("date", v)
@@ -29,13 +34,19 @@ class Prefs(ctx: Context) {
     var frameColorIndex: Int get() = int("frame_color", 0); set(v) = putInt("frame_color", v)
     var textColorIndex: Int get() = int("text_color", 0); set(v) = putInt("text_color", v)
 
-    // --- Jenis acara & bingkai ---
+    // --- Menu acara & bingkai ---
+    /** Tampilkan menu pilihan acara di layar awal. */
+    var eventMenu: Boolean get() = bool("event_menu", true); set(v) = putBool("event_menu", v)
+    /** Acara yang dipakai langsung jika menu dimatikan. */
     var eventType: EventType
-        get() = runCatching { EventType.valueOf(str("event_type", EventType.PERNIKAHAN.name)) }.getOrDefault(EventType.PERNIKAHAN)
+        get() = EventType.fromName(str("event_type", EventType.PERNIKAHAN.name)) ?: EventType.PERNIKAHAN
         set(v) = putStr("event_type", v.name)
-    var frameStyle: FrameStyle
-        get() = runCatching { FrameStyle.valueOf(str("frame_style", FrameStyle.ELEGAN_EMAS.name)) }.getOrDefault(FrameStyle.ELEGAN_EMAS)
-        set(v) = putStr("frame_style", v.name)
+    var enabledEvents: Set<EventType>
+        get() {
+            val names = sp.getStringSet("enabled_events", null) ?: return EventType.values().toSet()
+            return EventType.values().filter { it.name in names }.toSet()
+        }
+        set(v) = sp.edit().putStringSet("enabled_events", v.map { it.name }.toSet()).apply()
     var guestChooseFrame: Boolean get() = bool("guest_frame", true); set(v) = putBool("guest_frame", v)
     var showAllFrames: Boolean get() = bool("all_frames", false); set(v) = putBool("all_frames", v)
 

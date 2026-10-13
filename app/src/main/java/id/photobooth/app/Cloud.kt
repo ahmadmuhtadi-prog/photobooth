@@ -91,7 +91,7 @@ object CloudSync {
             throw IOException("Unggah terlalu lama")
         }
         try {
-            val folder = p.eventTitle.ifBlank { "Photobooth" }
+            val folder = p.homeTitle.ifBlank { "Photobooth" }
             val url = CloudUploader.upload(p.cloudUrl, p.cloudKey, File(dir, Storage.COLLAGE), "${dir.name}.jpg", folder)
             File(dir, MARKER).writeText(url)
             return url

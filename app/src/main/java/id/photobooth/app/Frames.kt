@@ -24,9 +24,13 @@ enum class FrameStyle(
     POLOS("Polos", null, null, null),
     ELEGAN_EMAS("Elegan Emas", 0xFFFBF6EC.toInt(), 0xFF8A6A2F.toInt(), true),
     BUNGA("Bunga", 0xFFF8E8EA.toInt(), 0xFF7A3B4A.toInt(), true, true),
+    ROMANTIS("Romantis Hati", 0xFFFFF0F3.toInt(), 0xFF9D2F4C.toInt(), true, true),
     PESTA("Pesta Konfeti", 0xFF1E1B3A.toInt(), 0xFFFFFFFF.toInt(), false),
     BALON("Balon Ceria", 0xFFFFF4D6.toInt(), 0xFF2B2D42.toInt(), false, true),
-    WISUDA("Wisuda", 0xFF14213D.toInt(), 0xFFE9C46A.toInt(), true, true),
+    WISUDA("Wisuda Navy", 0xFF14213D.toInt(), 0xFFE9C46A.toInt(), true, true),
+    WISUDA_MARUN("Wisuda Marun", 0xFF5C1A26.toInt(), 0xFFE9C46A.toInt(), true, true),
+    SPORTY("Sporty CFD", 0xFFFFFFFF.toInt(), 0xFF0B2545.toInt(), false),
+    ALAM("Hijau Segar", 0xFFEAF4E4.toInt(), 0xFF2F5D34.toInt(), false, true),
     POLAROID("Polaroid", 0xFFF1EEE8.toInt(), 0xFF333333.toInt(), true),
     FILM("Film Klasik", 0xFF111111.toInt(), 0xFFF2F2F2.toInt(), false),
     RETRO("Retro 70-an", 0xFFF4E3C1.toInt(), 0xFF3D2C29.toInt(), false),
@@ -39,60 +43,63 @@ enum class FrameStyle(
         if (this == FILM) (if (layout == LayoutType.STRIP_2X6) 34f else 50f) else 0f
 }
 
-/** Jenis acara: menentukan teks bawaan dan bingkai yang direkomendasikan. */
+/** Jenis acara yang tampil di menu layar awal, masing-masing dengan bingkai sesuai tema. */
 enum class EventType(
     val label: String,
+    val emoji: String,
+    val color: Int,
     val subtitle: String,
-    val titleHint: String,
+    val titleDefault: String,
     val frames: List<FrameStyle>
 ) {
     PERNIKAHAN(
-        "Pernikahan / Lamaran", "The Wedding of", "Nama & Nama",
-        listOf(FrameStyle.ELEGAN_EMAS, FrameStyle.BUNGA, FrameStyle.POLAROID, FrameStyle.POLOS)
-    ),
-    ULANG_TAHUN(
-        "Ulang Tahun", "Happy Birthday", "Nama yang berulang tahun",
-        listOf(FrameStyle.BALON, FrameStyle.PESTA, FrameStyle.POLAROID, FrameStyle.RETRO)
+        "Pernikahan", "\uD83D\uDC8D", 0xFFB8892F.toInt(), "The Wedding of", "Nama & Nama",
+        listOf(FrameStyle.ELEGAN_EMAS, FrameStyle.BUNGA, FrameStyle.ROMANTIS, FrameStyle.POLAROID, FrameStyle.POLOS)
     ),
     WISUDA(
-        "Wisuda", "Selamat Wisuda", "Nama kampus / angkatan",
-        listOf(FrameStyle.WISUDA, FrameStyle.ELEGAN_EMAS, FrameStyle.POLAROID, FrameStyle.FILM)
+        "Wisuda", "\uD83C\uDF93", 0xFF2A4A8A.toInt(), "Selamat Wisuda", "Wisuda 2026",
+        listOf(FrameStyle.WISUDA, FrameStyle.WISUDA_MARUN, FrameStyle.ELEGAN_EMAS, FrameStyle.POLAROID, FrameStyle.FILM)
+    ),
+    CFD(
+        "Car Free Day", "\uD83D\uDEB4", 0xFF00A6A6.toInt(), "Car Free Day", "CFD Minggu Pagi",
+        listOf(FrameStyle.SPORTY, FrameStyle.ALAM, FrameStyle.RETRO, FrameStyle.POLAROID)
+    ),
+    ULANG_TAHUN(
+        "Ulang Tahun", "\uD83C\uDF82", 0xFFEF476F.toInt(), "Happy Birthday", "Nama",
+        listOf(FrameStyle.BALON, FrameStyle.PESTA, FrameStyle.POLAROID, FrameStyle.RETRO)
     ),
     KORPORAT(
-        "Acara Kantor / Seminar", "Annual Gathering", "Nama perusahaan / instansi",
+        "Acara Kantor", "\uD83D\uDCBC", 0xFF2563EB.toInt(), "Annual Gathering", "Nama Perusahaan",
         listOf(FrameStyle.KORPORAT, FrameStyle.FILM, FrameStyle.POLAROID, FrameStyle.POLOS)
     ),
     LEBARAN(
-        "Halal Bihalal / Keagamaan", "Halal Bihalal", "Nama keluarga / instansi",
+        "Halal Bihalal", "\uD83C\uDF19", 0xFF2D8A57.toInt(), "Halal Bihalal", "Keluarga Besar",
         listOf(FrameStyle.ISLAMI, FrameStyle.ELEGAN_EMAS, FrameStyle.POLAROID, FrameStyle.POLOS)
     ),
     SEKOLAH(
-        "Perpisahan Sekolah / Pensi", "Kenangan Kita", "Nama sekolah / kelas",
+        "Perpisahan Sekolah", "\uD83C\uDFEB", 0xFFE76F51.toInt(), "Kenangan Kita", "Nama Sekolah",
         listOf(FrameStyle.RETRO, FrameStyle.PESTA, FrameStyle.POLAROID, FrameStyle.FILM)
     ),
     PESTA(
-        "Pesta / Konser / Festival", "Let's Party", "Nama acara",
+        "Pesta & Festival", "\uD83C\uDF89", 0xFF7B2CBF.toInt(), "Let's Party", "Nama Acara",
         listOf(FrameStyle.PESTA, FrameStyle.FILM, FrameStyle.RETRO, FrameStyle.BALON)
     ),
     UMUM(
-        "Umum (semua bingkai)", "Photobooth", "Nama acara",
+        "Lainnya", "\u2728", 0xFF6C757D.toInt(), "Photobooth", "Nama Acara",
         FrameStyle.values().filter { it != FrameStyle.CUSTOM }
     );
 
     companion object {
-        fun isDefaultSubtitle(s: String) = s.isBlank() || values().any { it.subtitle == s }
+        fun fromName(n: String?): EventType? = values().firstOrNull { it.name == n }
     }
 }
 
 object Frames {
 
-    /** Daftar bingkai yang ditawarkan ke tamu (bingkai utama selalu pertama). */
-    fun available(p: Prefs): List<FrameStyle> {
+    /** Daftar bingkai untuk satu acara (ditambah Bingkai Saya jika ada PNG). */
+    fun available(p: Prefs, ev: EventType): List<FrameStyle> {
         val hasPng = p.overlayUri.isNotBlank()
-        val base = if (p.showAllFrames) FrameStyle.values().toList() else p.eventType.frames
-        val list = mutableListOf<FrameStyle>()
-        list += p.frameStyle
-        base.forEach { if (it !in list) list += it }
+        val list = (if (p.showAllFrames) FrameStyle.values().toList() else ev.frames).toMutableList()
         if (hasPng && FrameStyle.CUSTOM !in list) list += FrameStyle.CUSTOM
         return list.filter { it != FrameStyle.CUSTOM || hasPng }.ifEmpty { listOf(FrameStyle.POLOS) }
     }
@@ -111,7 +118,13 @@ object Frames {
         when (st) {
             FrameStyle.PESTA -> confetti(c, w, h, k, if (w > 700) 260 else 150, 7)
             FrameStyle.BALON -> confetti(c, w, h, k, if (w > 700) 90 else 55, 21, alpha = 120)
-            FrameStyle.WISUDA -> sparkles(c, w, h, k, 0xFFE9C46A.toInt(), 11)
+            FrameStyle.WISUDA, FrameStyle.WISUDA_MARUN -> sparkles(c, w, h, k, 0xFFE9C46A.toInt(), 11)
+            FrameStyle.ROMANTIS -> {
+                val rnd = Random(5)
+                repeat(if (w > 700) 50 else 30) {
+                    heart(c, rnd.nextFloat() * w, rnd.nextFloat() * h, (5f + rnd.nextFloat() * 7f) * k, fill(0xFFF4A6B7.toInt(), 120))
+                }
+            }
             FrameStyle.ISLAMI -> diamondPattern(c, w, h, k)
             FrameStyle.POLAROID -> {
                 val p = fill(Color.WHITE).apply { setShadowLayer(12f * k, 0f, 4f * k, 0x40000000) }
@@ -136,6 +149,43 @@ object Frames {
                 flower(c, 22f * k, h - 26f * k, 14f * k, 0xFFF9C9A8.toInt())
                 divider(c, footer, k, 0xFFD98A9B.toInt())
             }
+            FrameStyle.ROMANTIS -> {
+                val rose = 0xFFD9577A.toInt()
+                c.drawRect(14f * k, 14f * k, w - 14f * k, h - 14f * k, stroke(rose, 2f * k))
+                heart(c, footer.left + 32f * k, footer.centerY(), 22f * k, fill(rose))
+                heart(c, footer.right - 32f * k, footer.centerY(), 22f * k, fill(rose))
+                heart(c, footer.left + 52f * k, footer.centerY() - 22f * k, 10f * k, fill(0xFFF4A6B7.toInt()))
+                heart(c, footer.right - 52f * k, footer.centerY() - 22f * k, 10f * k, fill(0xFFF4A6B7.toInt()))
+            }
+            FrameStyle.SPORTY -> {
+                val cols = intArrayOf(0xFFFF6B35.toInt(), 0xFF00A6A6.toInt(), 0xFF0B2545.toInt())
+                cols.forEachIndexed { i, col ->
+                    val a = (70f + i * 24f) * k
+                    val b = a + 13f * k
+                    c.drawPath(Path().apply { moveTo(0f, a); lineTo(a, 0f); lineTo(b, 0f); lineTo(0f, b); close() }, fill(col))
+                    c.drawPath(Path().apply { moveTo(w, h - a); lineTo(w - a, h); lineTo(w - b, h); lineTo(w, h - b); close() }, fill(col))
+                }
+                // Garis finis kotak-kotak di atas teks
+                val sq = 9f * k
+                var x = footer.left
+                var i = 0
+                while (x < footer.right) {
+                    val right = minOf(x + sq, footer.right)
+                    c.drawRect(x, footer.top, right, footer.top + sq, fill(if (i % 2 == 0) 0xFF0B2545.toInt() else Color.WHITE))
+                    c.drawRect(x, footer.top + sq, right, footer.top + 2 * sq, fill(if (i % 2 == 0) Color.WHITE else 0xFF0B2545.toInt()))
+                    x += sq; i++
+                }
+            }
+            FrameStyle.ALAM -> {
+                sun(c, footer.left + 32f * k, footer.centerY(), 16f * k)
+                leaf(c, footer.right - 30f * k, footer.centerY() - 14f * k, 34f * k, -35f)
+                leaf(c, footer.right - 40f * k, footer.centerY() + 12f * k, 30f * k, 25f)
+                leaf(c, footer.right - 18f * k, footer.centerY() + 6f * k, 26f * k, 70f)
+                leaf(c, 22f * k, 16f * k, 40f * k, 35f)
+                leaf(c, 14f * k, 34f * k, 30f * k, 75f)
+                leaf(c, w - 22f * k, 16f * k, 40f * k, -35f)
+                leaf(c, w - 14f * k, 34f * k, 30f * k, -75f)
+            }
             FrameStyle.PESTA -> {
                 val panel = RectF(footer.left + 6f * k, footer.top + 6f * k, footer.right - 6f * k, footer.bottom - 6f * k)
                 c.drawRoundRect(panel, 18f * k, 18f * k, fill(Color.BLACK, 110))
@@ -146,7 +196,7 @@ object Frames {
                 balloon(c, footer.right - 26f * k, footer.centerY() - 10f * k, k, 0xFFFFD166.toInt())
                 balloon(c, footer.right - 50f * k, footer.centerY() + 12f * k, k * 0.8f, 0xFF06D6A0.toInt())
             }
-            FrameStyle.WISUDA -> {
+            FrameStyle.WISUDA, FrameStyle.WISUDA_MARUN -> {
                 val gold = 0xFFE9C46A.toInt()
                 c.drawRect(12f * k, 12f * k, w - 12f * k, h - 12f * k, stroke(gold, 2.5f * k))
                 gradCap(c, footer.left + 34f * k, footer.centerY(), 26f * k, gold)
@@ -294,6 +344,28 @@ object Frames {
         val knot = Path().apply { moveTo(cx - 4f * k, cy + rh + 5f * k); lineTo(cx + 4f * k, cy + rh + 5f * k); lineTo(cx, cy + rh - 1f * k); close() }
         c.drawPath(knot, fill(color))
         c.drawOval(RectF(cx - rw * 0.55f, cy - rh * 0.7f, cx - rw * 0.15f, cy - rh * 0.2f), fill(Color.WHITE, 110))
+    }
+
+    private fun heart(c: Canvas, cx: Float, cy: Float, s: Float, p: Paint) {
+        val path = Path().apply {
+            moveTo(cx, cy + s * 0.9f)
+            cubicTo(cx - s * 1.4f, cy - s * 0.1f, cx - s * 0.6f, cy - s * 1.0f, cx, cy - s * 0.35f)
+            cubicTo(cx + s * 0.6f, cy - s * 1.0f, cx + s * 1.4f, cy - s * 0.1f, cx, cy + s * 0.9f)
+            close()
+        }
+        c.drawPath(path, p)
+    }
+
+    private fun sun(c: Canvas, cx: Float, cy: Float, r: Float) {
+        val ray = stroke(0xFFF9A03F.toInt(), r * 0.18f)
+        for (i in 0 until 8) {
+            val a = Math.toRadians(i * 45.0)
+            c.drawLine(
+                cx + (cos(a) * r * 1.35f).toFloat(), cy + (sin(a) * r * 1.35f).toFloat(),
+                cx + (cos(a) * r * 1.8f).toFloat(), cy + (sin(a) * r * 1.8f).toFloat(), ray
+            )
+        }
+        c.drawCircle(cx, cy, r, fill(0xFFF9C74F.toInt()))
     }
 
     private fun gradCap(c: Canvas, cx: Float, cy: Float, s: Float, color: Int) {

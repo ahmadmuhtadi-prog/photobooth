@@ -44,6 +44,10 @@ import kotlin.math.min
 /** Live preview + hitung mundur + multishot otomatis. */
 class BoothActivity : BaseActivity() {
 
+    companion object {
+        const val EXTRA_EVENT = "event"
+    }
+
     private lateinit var previewView: PreviewView
     private lateinit var countdownText: TextView
     private lateinit var infoText: TextView
@@ -53,6 +57,7 @@ class BoothActivity : BaseActivity() {
     private lateinit var filterRow: LinearLayout
     private lateinit var frameRow: LinearLayout
     private var selectedFrame = FrameStyle.POLOS
+    private lateinit var event: EventType
     private var frameOptions: List<FrameStyle> = emptyList()
 
     private var imageCapture: ImageCapture? = null
@@ -69,6 +74,7 @@ class BoothActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_booth)
         cameraExecutor = Executors.newSingleThreadExecutor()
+        event = EventType.fromName(intent.getStringExtra(EXTRA_EVENT)) ?: prefs.eventType
 
         previewView = findViewById(R.id.previewView)
         countdownText = findViewById(R.id.countdownText)
@@ -114,7 +120,8 @@ class BoothActivity : BaseActivity() {
     // ---------- Bingkai ----------
 
     private fun buildFrameChips() {
-        frameOptions = Frames.available(prefs)
+        frameOptions = Frames.available(prefs, event)
+        findViewById<TextView>(R.id.frameLabel).text = "${event.emoji} ${event.label} \u2014 pilih bingkai"
         selectedFrame = frameOptions.first()
         val show = prefs.guestChooseFrame && frameOptions.size > 1
         findViewById<View>(R.id.frameLabel).visibility = if (show) View.VISIBLE else View.GONE
@@ -160,7 +167,7 @@ class BoothActivity : BaseActivity() {
             frameOptions.forEachIndexed { i, f ->
                 val thumb = withContext(Dispatchers.Default) {
                     runCatching {
-                        val spec = CollageSpec.fromPrefs(this@BoothActivity, prefs, f)
+                        val spec = CollageSpec.fromPrefs(this@BoothActivity, prefs, event, f)
                         val full = Collage.render(spec, samples)
                         spec.recycle()
                         val t = Bitmap.createScaledBitmap(full, tw, th, true)
@@ -371,7 +378,7 @@ class BoothActivity : BaseActivity() {
             Storage.saveJpeg(f, File(dir, "foto_${i + 1}.jpg"), 90)
             filtered += f
         }
-        val spec = CollageSpec.fromPrefs(this, prefs, selectedFrame)
+        val spec = CollageSpec.fromPrefs(this, prefs, event, selectedFrame)
         val collage = Collage.render(spec, filtered)
         val collageFile = File(dir, Storage.COLLAGE)
         Storage.saveJpeg(collage, collageFile, 95)

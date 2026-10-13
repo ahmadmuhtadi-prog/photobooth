@@ -22,7 +22,7 @@ class BoothApp : Application() {
         super.onCreate()
         instance = this
         prefs = Prefs(this)
-        server = PhotoServer(Storage.sessionsRoot(this)) { prefs.eventTitle }
+        server = PhotoServer(Storage.sessionsRoot(this)) { prefs.homeTitle }
         applySharing()
         handler.postDelayed(syncTick, 5_000L)
     }

@@ -41,12 +41,12 @@ class CollageSpec(
     }
 
     companion object {
-        fun fromPrefs(ctx: Context, p: Prefs, frame: FrameStyle = p.frameStyle) = CollageSpec(
+        fun fromPrefs(ctx: Context, p: Prefs, event: EventType, frame: FrameStyle) = CollageSpec(
             layout = p.layout,
             frameColor = Palette.frame(p.frameColorIndex),
             textColor = Palette.text(p.textColorIndex),
-            title = p.eventTitle,
-            subtitle = p.eventSubtitle,
+            title = p.titleFor(event),
+            subtitle = p.subtitleFor(event),
             date = p.eventDate,
             serif = p.fontSerif,
             logo = Storage.loadUriBitmap(ctx, p.logoUri, 900),
